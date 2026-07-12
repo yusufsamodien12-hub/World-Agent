@@ -26,3 +26,5 @@ memory.json
 *.njsproj
 *.sln
 *.sw?
+.vercel
+.env*

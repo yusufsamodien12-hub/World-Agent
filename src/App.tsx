@@ -598,7 +598,7 @@ function App() {
               {/* Stats Grid */}
               <div className="grid grid-cols-4 gap-4 mb-8">
                 <div className="p-6 bg-slate-950/40 backdrop-blur-xl border border-white/10 rounded-[30px] shadow-2xl">
-                <p className="text-[7px] font-black text-white/30 uppercase mb-1">Structures</div>
+                  <div className="text-[7px] font-black text-white/30 uppercase mb-1">Structures</div>
                   <div className="text-3xl font-mono font-bold text-white">{state.progression.structuresCompleted}</div>
                   <div className="text-[8px] text-slate-300 mt-1">Total built</div>
                 </div>
