@@ -826,11 +826,19 @@ export async function decideNextAction(
       throw new Error('No JSON object found in model response');
     }
 
-    const candidateJson = repairJsonLikeResponse(extractedJson);
     let parsed: any;
     try {
-      parsed = JSON5.parse(candidateJson);
-    } catch (parseError) {
+      // JSON5 natively accepts single-quoted strings, so try the raw
+      // extracted block first. This avoids running the more aggressive
+      // repair regexes (which blindly pair up single quotes and can
+      // corrupt text containing apostrophes/contractions, e.g. "building's").
+      parsed = JSON5.parse(extractedJson);
+    } catch (rawParseError) {
+      console.warn('Raw JSON5 parse failed, trying repaired response:', rawParseError);
+      const candidateJson = repairJsonLikeResponse(extractedJson);
+      try {
+        parsed = JSON5.parse(candidateJson);
+      } catch (parseError) {
       console.warn('AI JSON5 parse failed on repaired response, trying fallback:', { parseError, candidateJson });
       const fallbackCandidate = candidateJson
         .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?\s*:/g, '"$2":')
@@ -855,6 +863,7 @@ export async function decideNextAction(
           console.error('Aggressive JSON5 repair failed; logging raw response for debugging', { thirdError, responseText, candidateJson, moreAggressive });
           throw thirdError;
         }
+      }
       }
     }
 
