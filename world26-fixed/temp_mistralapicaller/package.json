@@ -1,0 +1,41 @@
+{
+	"name": "mistralapicaller",
+	"description": "World26 API Proxy - Secure Mistral AI proxy with D1 state management",
+	"version": "1.0.0",
+	"type": "module",
+	"scripts": {
+		"deploy": "wrangler deploy",
+		"dev": "wrangler dev",
+		"start": "wrangler dev",
+		"test": "vitest",
+		"cf-typegen": "wrangler types",
+		"migrate:local": "wrangler d1 migrations apply world26-memory --local",
+		"migrate:remote": "wrangler d1 migrations apply world26-memory --remote",
+		"logs": "wrangler tail",
+		"secret:set": "wrangler secret put MISTRAL_API_KEY",
+		"secret:list": "wrangler secret list",
+		"db:query": "wrangler d1 execute world26-memory --remote --command",
+		"setup": "./deploy.sh"
+	},
+	"dependencies": {
+		"hono": "4.11.1"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "0.10.11",
+		"@cloudflare/workers-types": "^4.20240512.0",
+		"@types/node": "24.10.1",
+		"typescript": "5.9.3",
+		"vitest": "3.2.4",
+		"wrangler": "4.56.0"
+	},
+	"private": true,
+	"scripts": {
+		"cf-typegen": "wrangler types",
+		"deploy": "wrangler deploy",
+		"dev": "pnpm seedLocalDb && wrangler dev",
+		"predeploy": "wrangler d1 migrations apply DB --remote",
+		"schema": "npx chanfana",
+		"seedLocalDb": "wrangler d1 migrations apply DB --local",
+		"test": "wrangler deploy --dry-run && npx vitest run --config tests/vitest.config.mts"
+	}
+}

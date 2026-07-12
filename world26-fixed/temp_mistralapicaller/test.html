@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>World26 API Test</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 900px;
+      margin: 50px auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    h1 {
+      text-align: center;
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    .subtitle {
+      text-align: center;
+      opacity: 0.9;
+      margin-bottom: 30px;
+    }
+    .test-section {
+      background: rgba(255, 255, 255, 0.15);
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 10px;
+      border-left: 4px solid #4ade80;
+    }
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 25px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      margin: 10px 5px;
+      transition: all 0.3s;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    pre {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      max-height: 400px;
+      overflow-y: auto;
+      font-size: 13px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .status {
+      display: inline-block;
+      padding: 5px 15px;
+      border-radius: 15px;
+      font-size: 14px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    .status.online {
+      background: #4ade80;
+      color: #000;
+    }
+    .status.offline {
+      background: #ef4444;
+      color: #fff;
+    }
+    .status.loading {
+      background: #fbbf24;
+      color: #000;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-size: 14px;
+    }
+    input::placeholder {
+      color: rgba(255, 255, 255, 0.6);
+    }
+    .footer {
+      text-align: center;
+      margin-top: 40px;
+      opacity: 0.8;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌍 World26 API Test</h1>
+    <p class="subtitle">Cloudflare Worker Proxy Testing Interface</p>
+
+    <!-- Worker URL Configuration -->
+    <div class="test-section">
+      <h3>⚙️ Configuration</h3>
+      <label for="workerUrl">Worker URL:</label>
+      <input 
+        type="text" 
+        id="workerUrl" 
+        placeholder="https://mistralapicaller.yourusername.workers.dev"
+        value="https://mistralapicaller.yusufsamodin67.workers.dev"
+      />
+      <button onclick="saveWorkerUrl()">Save URL</button>
+    </div>
+
+    <!-- Health Check -->
+    <div class="test-section">
+      <h3>💚 Health Check</h3>
+      <p>Test if your Worker is online and responding</p>
+      <button onclick="testHealthCheck()">Run Health Check</button>
+      <div id="health-status"></div>
+      <pre id="health-output"></pre>
+    </div>
+
+    <!-- Mistral API Test -->
+    <div class="test-section">
+      <h3>🤖 Mistral AI Proxy Test</h3>
+      <p>Test the AI chat completion endpoint</p>
+      <button onclick="testMistralAPI()">Test Mistral API</button>
+      <button onclick="testSimplifiedFormat()">Test Simplified Format</button>
+      <div id="mistral-status"></div>
+      <pre id="mistral-output"></pre>
+    </div>
+
+    <!-- State Management Test -->
+    <div class="test-section">
+      <h3>💾 State Management Test</h3>
+      <p>Test simulation state save/load functionality</p>
+      <button onclick="testSaveState()">Save Test State</button>
+      <button onclick="testLoadState()">Load State</button>
+      <div id="state-status"></div>
+      <pre id="state-output"></pre>
+    </div>
+
+    <div class="footer">
+      <p>🚀 Powered by Cloudflare Workers | Built for GitHub Pages</p>
+      <p>Open browser console for detailed logs</p>
+    </div>
+  </div>
+
+  <script>
+    // Load worker URL from localStorage or use default
+    let WORKER_URL = localStorage.getItem('workerUrl') || 'https://mistralapicaller.yusufsamodin67.workers.dev';
+    document.getElementById('workerUrl').value = WORKER_URL;
+
+    function saveWorkerUrl() {
+      WORKER_URL = document.getElementById('workerUrl').value.trim();
+      localStorage.setItem('workerUrl', WORKER_URL);
+      alert('✅ Worker URL saved!');
+      console.log('Worker URL set to:', WORKER_URL);
+    }
+
+    function setStatus(elementId, status, message) {
+      const el = document.getElementById(elementId);
+      el.innerHTML = `<span class="status ${status}">${message}</span>`;
+    }
+
+    async function testHealthCheck() {
+      const outputEl = document.getElementById('health-output');
+      const statusEl = document.getElementById('health-status');
+      
+      setStatus('health-status', 'loading', '⏳ Checking...');
+      outputEl.textContent = 'Connecting to worker...';
+
+      try {
+        console.log('🔍 Testing health check:', WORKER_URL);
+        const response = await fetch(WORKER_URL);
+        const data = await response.json();
+        
+        outputEl.textContent = JSON.stringify(data, null, 2);
+        
+        if (response.ok && data.status === 'online') {
+          setStatus('health-status', 'online', '✅ Worker Online');
+          console.log('✅ Health check passed:', data);
+        } else {
+          setStatus('health-status', 'offline', '⚠️ Unexpected Response');
+          console.warn('⚠️ Unexpected response:', data);
+        }
+      } catch (err) {
+        setStatus('health-status', 'offline', '❌ Connection Failed');
+        outputEl.textContent = `Error: ${err.message}\n\nCheck:\n1. Worker URL is correct\n2. Worker is deployed\n3. CORS is enabled`;
+        console.error('❌ Health check failed:', err);
+      }
+    }
+
+    async function testMistralAPI() {
+      const outputEl = document.getElementById('mistral-output');
+      
+      setStatus('mistral-status', 'loading', '⏳ Calling Mistral AI...');
+      outputEl.textContent = 'Sending request to Mistral API...';
+
+      try {
+        console.log('🤖 Testing Mistral API (standard format)');
+        const response = await fetch(`${WORKER_URL}/v1/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'mistral-large-latest',
+            messages: [
+              { role: 'system', content: 'You are a helpful assistant.' },
+              { role: 'user', content: 'Say "Hello from World26!" and nothing else.' }
+            ],
+            temperature: 0.7,
+            max_tokens: 50
+          })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok && data.choices) {
+          setStatus('mistral-status', 'online', '✅ Mistral API Working');
+          outputEl.textContent = JSON.stringify(data, null, 2);
+          console.log('✅ Mistral API test passed:', data);
+        } else {
+          setStatus('mistral-status', 'offline', '❌ API Error');
+          outputEl.textContent = JSON.stringify(data, null, 2);
+          console.error('❌ Mistral API error:', data);
+        }
+      } catch (err) {
+        setStatus('mistral-status', 'offline', '❌ Request Failed');
+        outputEl.textContent = `Error: ${err.message}`;
+        console.error('❌ Mistral API test failed:', err);
+      }
+    }
+
+    async function testSimplifiedFormat() {
+      const outputEl = document.getElementById('mistral-output');
+      
+      setStatus('mistral-status', 'loading', '⏳ Testing Simplified Format...');
+      outputEl.textContent = 'Sending simplified format request...';
+
+      try {
+        console.log('🤖 Testing Mistral API (simplified format)');
+        const response = await fetch(`${WORKER_URL}/v1/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: 'You are Architect-OS from World26.',
+            prompt: 'Respond with only: "System initialized. Ready to build."',
+            model: 'mistral-large-latest'
+          })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok && data.choices) {
+          setStatus('mistral-status', 'online', '✅ Simplified Format Working');
+          outputEl.textContent = JSON.stringify(data, null, 2);
+          console.log('✅ Simplified format test passed:', data);
+        } else {
+          setStatus('mistral-status', 'offline', '❌ API Error');
+          outputEl.textContent = JSON.stringify(data, null, 2);
+          console.error('❌ Simplified format error:', data);
+        }
+      } catch (err) {
+        setStatus('mistral-status', 'offline', '❌ Request Failed');
+        outputEl.textContent = `Error: ${err.message}`;
+        console.error('❌ Simplified format test failed:', err);
+      }
+    }
+
+    async function testSaveState() {
+      const outputEl = document.getElementById('state-output');
+      
+      setStatus('state-status', 'loading', '⏳ Saving State...');
+      outputEl.textContent = 'Saving test state...';
+
+      try {
+        const testState = {
+          objects: [
+            { type: 'wall', position: [0, 0, 0], timestamp: Date.now() },
+            { type: 'tree', position: [5, 0, 5], timestamp: Date.now() }
+          ],
+          timestamp: Date.now(),
+          version: '1.0.0'
+        };
+
+        console.log('💾 Saving state:', testState);
+        const response = await fetch(`${WORKER_URL}/state`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ state: testState })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+          setStatus('state-status', 'online', '✅ State Saved');
+          outputEl.textContent = `State saved successfully!\n\n${JSON.stringify(testState, null, 2)}`;
+          console.log('✅ State saved:', data);
+        } else {
+          setStatus('state-status', 'offline', '❌ Save Failed');
+          outputEl.textContent = JSON.stringify(data, null, 2);
+          console.error('❌ State save failed:', data);
+        }
+      } catch (err) {
+        setStatus('state-status', 'offline', '❌ Request Failed');
+        outputEl.textContent = `Error: ${err.message}`;
+        console.error('❌ State save error:', err);
+      }
+    }
+
+    async function testLoadState() {
+      const outputEl = document.getElementById('state-output');
+      
+      setStatus('state-status', 'loading', '⏳ Loading State...');
+      outputEl.textContent = 'Loading state from database...';
+
+      try {
+        console.log('💾 Loading state');
+        const response = await fetch(`${WORKER_URL}/state`);
+        const data = await response.json();
+        
+        if (response.ok) {
+          setStatus('state-status', 'online', '✅ State Loaded');
+          outputEl.textContent = JSON.stringify(data, null, 2);
+          console.log('✅ State loaded:', data);
+        } else {
+          setStatus('state-status', 'offline', '❌ Load Failed');
+          outputEl.textContent = JSON.stringify(data, null, 2);
+          console.error('❌ State load failed:', data);
+        }
+      } catch (err) {
+        setStatus('state-status', 'offline', '❌ Request Failed');
+        outputEl.textContent = `Error: ${err.message}`;
+        console.error('❌ State load error:', err);
+      }
+    }
+
+    // Auto-run health check on page load
+    window.addEventListener('load', () => {
+      console.log('🚀 World26 API Test Page Loaded');
+      console.log('Worker URL:', WORKER_URL);
+      setTimeout(testHealthCheck, 500);
+    });
+  </script>
+</body>
+</html>
