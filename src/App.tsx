@@ -477,12 +477,12 @@ function App() {
   };
 
   return (
-    <div className="relative w-full h-screen overflow-hidden font-sans bg-slate-950 text-slate-200">
+    <div className="relative w-full h-screen overflow-hidden font-sans bg-slate-900 text-slate-100">
       {/* Background */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,#0f172a_0%,#020617_80%)] opacity-60" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,#111827_0%,#020617_75%)] opacity-85" />
 
       {/* Neural Dashboard Header */}
-      <div className="absolute top-0 left-0 w-full px-10 h-24 border-b border-white/5 flex justify-between items-center z-20 pointer-events-none bg-slate-950/90 backdrop-blur-2xl shadow-2xl">
+      <div className="absolute top-0 left-0 w-full px-10 h-24 border-b border-white/10 flex justify-between items-center z-20 pointer-events-none bg-slate-900/95 backdrop-blur-3xl shadow-[0_35px_120px_rgba(15,23,42,0.35)]">
         <div className="pointer-events-auto flex items-center gap-12">
           <div className="flex items-center gap-4">
             <div className="relative">
@@ -505,11 +505,11 @@ function App() {
           </div>
 
           {/* Metrics Panel */}
-          <div className="hidden lg:flex gap-10 border-l border-white/5 pl-10">
+          <div className="hidden lg:flex gap-10 border-l border-white/10 pl-10">
             <div className="space-y-1">
-              <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Structures</p>
+              <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Structures</p>
               <div className="flex items-center gap-2">
-                <Waves className="w-3 h-3 text-emerald-500/50" />
+                <Waves className="w-3 h-3 text-emerald-400/70" />
                 <span className="text-xs font-mono">{state.progression.structuresCompleted}</span>
               </div>
             </div>
@@ -536,10 +536,10 @@ function App() {
         </div>
 
         <div className="flex items-center gap-6 pointer-events-auto">
-          <div className="flex gap-4 text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500 bg-black/40 p-1.5 rounded-full border border-white/5">
+          <div className="flex gap-4 text-[10px] font-medium uppercase tracking-[0.2em] text-slate-300 bg-slate-950/40 p-1.5 rounded-full border border-white/10">
             <button 
               onClick={() => setView('nexus')}
-              className={`flex items-center gap-2 px-6 py-2 rounded-full transition-all ${view === 'nexus' ? 'text-sky-400 bg-sky-400/10' : 'hover:text-white'}`}
+              className={`flex items-center gap-2 px-6 py-2 rounded-full transition-all ${view === 'nexus' ? 'text-sky-400 bg-sky-400/15' : 'hover:text-white'}`}
             >
               <Target className="w-3 h-3" /> Core
             </button>
@@ -571,7 +571,7 @@ function App() {
           </div>
 
           {/* Network Status */}
-          <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-full border border-white/5 backdrop-blur-md">
+          <div className="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md">
             <div className={`w-2 h-2 rounded-full ${
               state.networkStatus === 'syncing' ? 'bg-sky-400 animate-ping' : 
               state.networkStatus === 'error' ? 'bg-red-500 shadow-[0_0_15px_#ef4444]' :
@@ -598,12 +598,12 @@ function App() {
               {/* Stats Grid */}
               <div className="grid grid-cols-4 gap-4 mb-8">
                 <div className="p-6 bg-slate-950/40 backdrop-blur-xl border border-white/10 rounded-[30px] shadow-2xl">
-                  <div className="text-[7px] font-black text-white/20 uppercase mb-1">Structures</div>
+                <p className="text-[7px] font-black text-white/30 uppercase mb-1">Structures</div>
                   <div className="text-3xl font-mono font-bold text-white">{state.progression.structuresCompleted}</div>
-                  <div className="text-[8px] text-slate-500 mt-1">Total built</div>
+                  <div className="text-[8px] text-slate-300 mt-1">Total built</div>
                 </div>
-                <div className="p-6 bg-slate-950/40 backdrop-blur-xl border border-white/10 rounded-[30px] shadow-2xl">
-                  <div className="text-[7px] font-black text-white/20 uppercase mb-1">Knowledge</div>
+                <div className="p-6 bg-slate-900/65 backdrop-blur-2xl border border-white/15 rounded-[30px] shadow-[0_35px_80px_rgba(15,23,42,0.28)]">
+                  <div className="text-[7px] font-black text-white/30 uppercase mb-1">Knowledge</div>
                   <div className="text-3xl font-mono font-bold text-sky-400">{state.knowledgeBase.length}</div>
                   <div className="text-[8px] text-slate-500 mt-1">Neural nodes</div>
                 </div>
@@ -630,9 +630,9 @@ function App() {
                   {/* Controls */}
                   <div className="flex items-center justify-between pt-8 border-t border-white/5">
                     <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-3 bg-white/5 px-5 py-3 rounded-full">
+                      <div className="flex items-center gap-3 bg-white/10 px-5 py-3 rounded-full">
                         <div className={`w-2 h-2 rounded-full ${isAuto ? 'bg-sky-400 animate-pulse' : 'bg-slate-600'}`} />
-                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{isAuto ? 'Auto-Pilot' : 'Manual'}</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">{isAuto ? 'Auto-Pilot' : 'Manual'}</span>
                       </div>
                       <button 
                         onClick={() => setIsAuto(!isAuto)}
@@ -661,8 +661,8 @@ function App() {
               </div>
 
               {/* API Metrics Graph */}
-              <div className="h-32 bg-slate-950/40 backdrop-blur-xl border border-white/10 rounded-[30px] shadow-2xl overflow-hidden mb-8">
-                <div className="px-5 py-3 border-b border-white/5 flex justify-between items-center bg-white/5">
+              <div className="h-32 bg-slate-900/65 backdrop-blur-2xl border border-white/15 rounded-[30px] shadow-[0_35px_80px_rgba(15,23,42,0.28)] overflow-hidden mb-8">
+                <div className="px-5 py-3 border-b border-white/10 flex justify-between items-center bg-white/10">
                   <span className="text-[9px] font-black uppercase text-emerald-400 tracking-[0.3em]">Neural Uplink Metrics</span>
                   <div className="flex gap-1">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
