@@ -2,6 +2,39 @@
 import JSON5 from 'json5';
 import { WorldObject, LogEntry, WorldObjectType, GroundingLink, ConstructionPlan, KnowledgeEntry, KnowledgeCategory, CustomMeshSpec, MeshGeometryKind } from "../src/types";
 
+// Built-in world object types the renderer already knows how to draw without
+// a customMesh. Anything outside this set (e.g. an AI-invented "gold brick")
+// needs a generated mesh from the BlockForge design service instead.
+const BUILT_IN_TYPES = new Set<string>([
+  'wall', 'roof', 'door', 'crop', 'tree', 'well', 'fence', 'modular_unit', 'solar_panel', 'water_collector'
+]);
+
+const BLOCKFORGE_DESIGN_URL = (import.meta.env.VITE_BLOCKFORGE_DESIGN_URL as string | undefined)
+  ?? 'https://blockforge.yusufsamodien12.workers.dev/design';
+
+// Calls BlockForge's /design endpoint (Mistral + PolyHaven-backed mesh
+// generation) for object types the agent invents that aren't part of the
+// built-in renderer vocabulary. Falls back to undefined on any failure so
+// the caller can apply its own fallback mesh instead of breaking the loop.
+async function fetchCustomMeshFromBlockforge(description: string): Promise<CustomMeshSpec | undefined> {
+  try {
+    const resp = await fetch(BLOCKFORGE_DESIGN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description }),
+    });
+    if (!resp.ok) {
+      console.warn(`BlockForge /design returned ${resp.status} for "${description}"`);
+      return undefined;
+    }
+    const data: any = await resp.json();
+    return sanitizeCustomMesh(data?.spec);
+  } catch (err) {
+    console.warn('BlockForge /design request failed:', err);
+    return undefined;
+  }
+}
+
 // Building the prompt used to index `activePlan.steps[activePlan.currentStepIndex]`
 // directly. Since `activePlan` can come back from a previous, possibly malformed
 // AI response, an out-of-range index would throw here on every subsequent call,
@@ -637,6 +670,10 @@ export async function decideNextAction(
     - "customMesh.parts" is a list of 1-6 simple primitives that combine into the object.
     - Each primitive must have safe numeric values: dimensions stay between 0.05 and 6 meters.
     - Omit customMesh for plain defaults unless you have a clear, intentional design.
+    - You may also invent a specific decorative or thematic "objectType" outside the
+      standard set (e.g. "gold brick", "carved statue", "lantern post"). If you omit
+      "customMesh" for one of these invented types, the BlockForge design service will
+      automatically research the material and geometry and generate one for you.
 
     FORM-SPACE-ORDER TEACHINGS:
     - Use the vocabulary of architecture: point, line, plane, volume, form, space, order, solid, transformation.
@@ -837,12 +874,22 @@ export async function decideNextAction(
     }
 
     const links: GroundingLink[] = [];
-    const sanitizedCustomMesh = sanitizeCustomMesh(parsed.customMesh) ?? buildFallbackCustomMesh(parsed.objectType as WorldObjectType);
+    const sanitizedTopCustomMesh = sanitizeCustomMesh(parsed.customMesh);
+    const sanitizedCustomMesh = sanitizedTopCustomMesh
+      ?? (!BUILT_IN_TYPES.has(parsed.objectType) && typeof parsed.objectType === 'string'
+        ? await fetchCustomMeshFromBlockforge(parsed.taskLabel || parsed.objectType)
+        : undefined)
+      ?? buildFallbackCustomMesh(parsed.objectType as WorldObjectType);
 
     if (parsed.plan?.steps && Array.isArray(parsed.plan.steps)) {
-      parsed.plan.steps = parsed.plan.steps.map((step: any) => ({
-        ...step,
-        customMesh: sanitizeCustomMesh(step?.customMesh) ?? buildFallbackCustomMesh(step?.type as WorldObjectType),
+      parsed.plan.steps = await Promise.all(parsed.plan.steps.map(async (step: any) => {
+        const sanitizedStepMesh = sanitizeCustomMesh(step?.customMesh);
+        const customMesh = sanitizedStepMesh
+          ?? (!BUILT_IN_TYPES.has(step?.type) && typeof step?.type === 'string'
+            ? await fetchCustomMeshFromBlockforge(step?.label || step?.type)
+            : undefined)
+          ?? buildFallbackCustomMesh(step?.type as WorldObjectType);
+        return { ...step, customMesh };
       }));
     }
 
