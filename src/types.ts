@@ -11,6 +11,8 @@ export interface MeshMaterialSpec {
   metalness?: number;
   emissive?: string;
   emissiveIntensity?: number;
+  /** URL to a texture image to use as map (diffuse/albedo) */
+  textureUrl?: string;
 }
 
 export interface MeshPart {
