@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'motion/react';
 import { Brain, Activity, Network, History, Terminal as TerminalIcon, Target, Waves, TrendingUp, Download, X, ChevronRight, Search, Cpu, Zap, BookOpen, Loader2 } from 'lucide-react';
 import { KnowledgeGraph } from '../components/KnowledgeGraph';
+import WebKnowledgeGraph from '../components/WebKnowledgeGraph';
 import { WorldObject, LogEntry, SimulationState, KnowledgeEntry, GroundingLink, ConstructionPlan, KnowledgeCategory, WorldObjectType } from './types';
 import { decideNextAction, AIActionResponse } from '../services/aiLogic';
 import { loadSimulationState, saveSimulationState } from '../services/memoryService';
@@ -545,9 +546,9 @@ function App() {
             </button>
             <button 
               onClick={() => setView('knowledge')}
-              className={`flex items-center gap-2 px-6 py-2 rounded-full transition-all ${view === 'knowledge' ? 'text-sky-400 bg-sky-400/10' : 'hover:text-white'}`}
+              className={`flex items-center gap-2 px-6 py-2 rounded-full transition-all ${view === 'knowledge' ? 'text-amber-500 bg-amber-500/10' : 'hover:text-white'}`}
             >
-              <Network className="w-3 h-3" /> Neural
+              <Network className="w-3 h-3" /> Knowledge
             </button>
             <button 
               onClick={() => setView('logs')}
@@ -741,31 +742,30 @@ function App() {
 
         {view === 'knowledge' && (
           <div className="w-full h-full overflow-y-auto pt-14 pb-24 px-10">
-            <div className="max-w-4xl mx-auto space-y-8">
-              <div className="flex justify-between items-end">
-                <h2 className="text-4xl font-black italic text-white underline decoration-sky-400/30 underline-offset-8">Neural Repository</h2>
-                <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Total Concepts: {state.knowledgeBase.length}</div>
+            <div className="max-w-4xl mx-auto space-y-6">
+              {/* Synapsy-style Web Knowledge Graph */}
+              <div className="bg-black/40 backdrop-blur-xl border border-amber-500/10 rounded-[30px] p-6">
+                <WebKnowledgeGraph entries={state.knowledgeBase} onSelect={setSelectedKnowledge} />
               </div>
-              {state.knowledgeBase.length > 0 && (
-                <div className="bg-slate-950/40 backdrop-blur-xl border border-white/10 rounded-[30px] p-6">
-                  <KnowledgeGraph entries={state.knowledgeBase} width={700} height={300} />
-                </div>
-              )}
-              <div className="grid gap-4">
+
+              {/* Knowledge list */}
+              <div className="grid gap-3">
                 {state.knowledgeBase.length === 0 ? (
-                  <div className="py-24 text-center text-[10px] font-black uppercase tracking-[0.4em] text-white/20">Awaiting Uplink...</div>
+                  <div className="py-16 text-center">
+                    <div className="text-[10px] font-mono text-amber-500/40">No knowledge yet. Let the agent explore!</div>
+                  </div>
                 ) : (
                   state.knowledgeBase.slice().reverse().map((k) => (
                     <motion.div 
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       key={k.id} 
-                      className="p-6 bg-slate-950/40 backdrop-blur-xl border border-white/10 rounded-[30px] hover:border-sky-400/30 transition-all cursor-pointer"
+                      className="p-4 bg-black/40 backdrop-blur-xl border border-amber-500/10 rounded-2xl hover:border-amber-500/30 transition-all cursor-pointer"
                       onClick={() => setSelectedKnowledge(k)}
                     >
-                      <div className="flex justify-between items-center mb-3">
-                        <span className="text-[10px] font-black text-sky-400 uppercase tracking-widest">{k.category}</span>
-                        <span className="text-[8px] font-mono text-white/20">#{k.iteration}</span>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest">{k.category}</span>
+                        <span className="text-[7px] font-mono text-amber-500/30">#{k.iteration}</span>
                       </div>
                       <h4 className="text-sm font-black text-white mb-2 uppercase italic">{k.title}</h4>
                       <p className="text-[11px] leading-relaxed text-white/50">{k.description}</p>
