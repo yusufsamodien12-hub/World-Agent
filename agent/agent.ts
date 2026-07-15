@@ -1,5 +1,5 @@
 /**
- * Architect-OS Agent - The core intelligence for the World26 simulation.
+ * World Builder Agent - Core simulation intelligence.
  * 
  * This is a framework-agnostic agent that:
  * 1. Maintains simulation state (objects, knowledge, logs, plans)
@@ -33,11 +33,11 @@ import { AgentLogger } from './logger';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-const INITIAL_GOAL = 'Synthesize Sustainable Modular Settlement';
+const INITIAL_GOAL = 'Build sustainable structures';
 const DEFAULT_STEP_INTERVAL = 4500;
 const DEFAULT_MAX_API_METRICS = 20;
 
-const VALID_PLAN_TYPES: WorldObjectType[] = [
+const VALID_OBJECT_TYPES: WorldObjectType[] = [
   'wall', 'roof', 'door', 'crop', 'tree', 'well', 'fence', 'modular_unit', 'solar_panel', 'water_collector'
 ];
 
@@ -134,7 +134,7 @@ function normalizeConstructionPlan(
       ? step.status
       : (index === 0 ? 'active' : 'pending');
 
-    const type = VALID_PLAN_TYPES.includes(step.type) ? step.type : 'modular_unit';
+    const type = VALID_OBJECT_TYPES.includes(step.type) ? step.type : 'modular_unit';
     const label = typeof step.label === 'string' && step.label.trim().length > 0 ? step.label : `${type} step ${index + 1}`;
 
     return { ...step, type, label, position, status };
@@ -341,8 +341,8 @@ export class ArchitectAgent {
   start(): void {
     if (this.isRunning) return;
     this.isRunning = true;
-    this.logger.info('Agent', 'Architect-OS loop started');
-    this.addLog('Architect-OS Online. Neural pathways clear.', 'success');
+    this.logger.info('Agent', 'Simulation loop started');
+    this.addLog('System ready.', 'success');
     this.runLoop();
   }
 
@@ -353,8 +353,8 @@ export class ArchitectAgent {
       clearTimeout(this.intervalId);
       this.intervalId = null;
     }
-    this.logger.info('Agent', 'Architect-OS loop stopped');
-    this.addLog('Architect-OS paused. Awaiting directive.', 'action');
+    this.logger.info('Agent', 'Simulation loop stopped');
+    this.addLog('Simulation paused.', 'action');
   }
 
   /** Execute a single simulation step */
@@ -363,8 +363,8 @@ export class ArchitectAgent {
     this.isProcessing = true;
     this.callbacks.onProcessingChange(true);
     this.setNetworkStatus('syncing');
-    this.updateTask('Initiating Neural Uplink...', 5);
-    this.addLog('Initiating Neural Uplink...', 'thinking');
+    this.updateTask('Connecting to AI...', 5);
+    this.addLog('Connecting to AI...', 'thinking');
 
     const apiStartTime = Date.now();
 
@@ -391,8 +391,8 @@ export class ArchitectAgent {
         { id: generateId(), timestamp: Date.now(), latency: apiLatency, status: 'success' as const }
       ].slice(-this.config.maxApiMetrics);
 
-      this.updateTask('Processing synthesis packets...', 40);
-      this.addLog('Neural Uplink Successful. Processing synthesis packets...', 'success');
+this.updateTask('Processing response...', 40);
+    this.addLog('AI response received.', 'success');
 
       // Stream reasoning steps
       if (decision.reasoningSteps && decision.reasoningSteps.length > 0) {
@@ -454,7 +454,7 @@ export class ArchitectAgent {
       return decision;
     } catch (e) {
       const error = e instanceof Error ? e : new Error(String(e));
-      this.addLog('Critical neural desync. Link unstable.', 'error');
+      this.addLog('Connection error.', 'error');
       this.setNetworkStatus('error');
       this.state.apiMetrics = [
         ...this.state.apiMetrics,
@@ -466,11 +466,11 @@ export class ArchitectAgent {
     } finally {
       this.isProcessing = false;
       this.callbacks.onProcessingChange(false);
-      this.updateTask(this.isRunning ? 'Scanning Topology...' : 'Standby', 0);
+      this.updateTask(this.isRunning ? 'Scanning...' : 'Standby', 0);
       if (this.state.networkStatus === 'error') {
         this.setNetworkStatus('error');
       } else {
-        this.setNetworkStatus('uplink_active');
+        this.setNetworkStatus('connected');
       }
     }
   }
@@ -486,8 +486,8 @@ export class ArchitectAgent {
           // Preserve runtime-only fields
           apiMetrics: savedState.apiMetrics ?? this.state.apiMetrics,
         };
-        this.logger.info('Agent', 'Neural Memory Restored: Continuing previous simulation.');
-        this.addLog('Neural Memory Restored: Continuing previous simulation.', 'success');
+        this.logger.info('Agent', 'Previous state loaded.');
+        this.addLog('Previous state loaded.', 'success');
         this.emitState();
         return true;
       }
@@ -539,7 +539,7 @@ export class ArchitectAgent {
       this.config.proxyUrl || undefined,
       this.config.stateEndpoint || undefined
     );
-    this.addLog('Architect-OS Reset. Neural pathways cleared.', 'success');
+    this.addLog('System reset.', 'success');
     this.emitState();
   }
 
@@ -569,19 +569,19 @@ export class ArchitectAgent {
       logs: [{
         id: generateId(),
         type: 'success' as const,
-        message: 'Architect-OS Online. Neural pathways clear.',
+        message: 'System ready.',
         timestamp: Date.now()
       }],
       knowledgeBase: [],
       currentGoal: this.config.initialGoal,
       learningIteration: 0,
-      networkStatus: 'uplink_active' as const,
+      networkStatus: 'connected' as const,
       activePlan: undefined,
       progression: {
         complexityLevel: 1,
         structuresCompleted: 0,
         totalBlocks: 0,
-        unlockedBlueprints: ['Core Protocol', 'Adaptive Clustering']
+        availablePatterns: ['Basic', 'Advanced']
       },
       apiMetrics: [],
       learningMetrics: {
@@ -661,7 +661,7 @@ export class ArchitectAgent {
     const y = Number.isFinite(yCandidate) ? yCandidate : this.config.terrainHeightFn(x, z);
     targetPos = normalizePosition([x, y, z]);
 
-    this.addLog(`Synthesis Confirmed: Deploying ${targetType} unit at ${this.formatPosition(targetPos)}.`, 'success');
+    this.addLog(`Placing ${targetType} at ${this.formatPosition(targetPos)}.`, 'success');
 
     const meshResearch = decision.customMesh?.materialResearch || currentStep?.customMesh?.materialResearch;
     if (meshResearch) {
@@ -692,7 +692,7 @@ export class ArchitectAgent {
         updatedPlan = { ...updatedPlan, steps, currentStepIndex: nextIdx };
       } else {
         updatedPlan = undefined;
-        this.addLog('Strategic Objective Achieved.', 'success');
+        this.addLog('Building completed.', 'success');
       }
     } else {
       updatedPlan = undefined;

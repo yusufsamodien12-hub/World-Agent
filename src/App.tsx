@@ -198,17 +198,17 @@ function App() {
   const [view, setView] = useState<ViewType>('nexus');
   const [state, setState] = useState<SimulationState>({
     objects: [],
-    logs: [{ id: '1', type: 'success', message: 'Architect-OS Online. Neural pathways clear.', timestamp: Date.now() }],
+    logs: [{ id: '1', type: 'success', message: 'System ready.', timestamp: Date.now() }],
     knowledgeBase: [],
     currentGoal: INITIAL_GOAL,
     learningIteration: 0,
-    networkStatus: 'uplink_active',
+    networkStatus: 'connected',
     activePlan: undefined,
     progression: {
       complexityLevel: 1,
       structuresCompleted: 0,
       totalBlocks: 0,
-      unlockedBlueprints: ['Core Protocol', 'Adaptive Clustering']
+      unlockedBlueprints: ['Basic', 'Advanced']
     },
     apiMetrics: [],
     ui: { showStats: true, showKnowledge: true, showLogs: true, showPlanning: true, showNetwork: true }
@@ -216,7 +216,7 @@ function App() {
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAuto, setIsAuto] = useState(true);
-  const [currentTask, setCurrentTask] = useState<string>("Analyzing Local Sector...");
+  const [currentTask, setCurrentTask] = useState<string>("Analyzing area...");
   const [taskProgress, setTaskProgress] = useState(0);
   const [selectedKnowledge, setSelectedKnowledge] = useState<KnowledgeEntry | null>(null);
   const logContainerRef = useRef<HTMLDivElement>(null);
@@ -247,7 +247,7 @@ function App() {
             apiMetrics: savedState.apiMetrics || prev.apiMetrics,
             logs: savedState.logs || prev.logs
           }));
-          addLog("Neural Memory Restored: Continuing previous simulation.", "success");
+          addLog("Previous state loaded.", "success");
         }
       } catch (err) {
         console.error("Memory initialization failed:", err);
@@ -272,9 +272,9 @@ function App() {
     setState(prev => ({ ...prev, networkStatus: 'syncing' }));
     setTaskProgress(5);
 
-    addLog("Initiating Neural Uplink...", "thinking");
+    addLog("Connecting to AI...", "thinking");
     await new Promise(r => setTimeout(r, 400));
-    addLog("Accessing local sector topology map...", "thinking");
+    addLog("Reading environment data...", "thinking");
     await new Promise(r => setTimeout(r, 600));
     setTaskProgress(20);
     const apiStartTime = Date.now();
@@ -296,7 +296,7 @@ function App() {
       }));
 
       setTaskProgress(40);
-      addLog("Neural Uplink Successful. Processing synthesis packets...", "success");
+      addLog("AI response received.", "success");
       
       if (decision.reasoningSteps && decision.reasoningSteps.length > 0) {
         for (const step of decision.reasoningSteps) {
@@ -355,7 +355,7 @@ function App() {
         const y = Number.isFinite(yCandidate) ? yCandidate : getTerrainHeight(x, z);
         targetPos = normalizePosition([x, y, z]);
 
-        addLog(`Synthesis Confirmed: Deploying ${targetType} unit at ${formatPositionWithUnits(targetPos)}.`, 'success');
+        addLog(`Placing ${targetType} unit at ${formatPositionWithUnits(targetPos)}.`, 'success');
         const meshResearch = decision.customMesh?.materialResearch || currentStep?.customMesh?.materialResearch;
         if (meshResearch) {
           addLog(`Material research: ${meshResearch}`, 'thinking');
@@ -430,12 +430,12 @@ function App() {
           };
         });
       } else if (decision.action === 'MOVE' && decision.position) {
-        addLog(`Relocating: Optimizing sector positioning.`, 'action');
+        addLog(`Moving to new position.`, 'action');
       } else {
         addLog(`Simulation standby: ${decision.reason}`, 'action');
       }
     } catch (e) {
-      addLog("Critical neural desync. Link unstable.", "error");
+      addLog("Connection error.", "error");
       setState(prev => ({ 
         ...prev, 
         networkStatus: 'error',
@@ -446,7 +446,7 @@ function App() {
       setTaskProgress(0);
       setState(prev => ({ 
         ...prev, 
-        networkStatus: prev.networkStatus === 'error' ? 'error' : 'uplink_active' 
+        networkStatus: prev.networkStatus === 'error' ? 'error' : 'connected' 
       }));
       setCurrentTask(isAuto ? "Scanning Topology..." : "Standby");
     }
@@ -468,12 +468,12 @@ function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `architect-os-state-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `world-state-${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    addLog('Neural state manifest exported.', 'success');
+    addLog('State exported.', 'success');
   };
 
   return (

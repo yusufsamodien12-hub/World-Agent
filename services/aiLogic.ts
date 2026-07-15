@@ -38,7 +38,7 @@ async function fetchCustomMeshFromBlockforge(description: string): Promise<Custo
 // killing the whole simulation loop. Describe defensively instead.
 function describeActivePlan(activePlan?: ConstructionPlan): string {
   if (!activePlan || !Array.isArray(activePlan.steps) || activePlan.steps.length === 0) {
-    return 'NONE - Awaiting Strategic Blueprint';
+    return 'NONE - No active plan';
   }
   const step = activePlan.steps[activePlan.currentStepIndex];
   if (!step || !Array.isArray(step.position)) {

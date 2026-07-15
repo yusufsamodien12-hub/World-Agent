@@ -1,5 +1,5 @@
 /**
- * Agent AI Logic - Architect-OS intelligence for the World26 simulation.
+ * Agent AI Logic - Core decision-making for the world simulation.
  * Handles communication with Mistral AI, prompt construction, response parsing,
  * plan validation, and mesh sanitization.
  * 
@@ -50,7 +50,7 @@ async function fetchCustomMeshFromBlockforge(
 
 function describeActivePlan(activePlan?: ConstructionPlan): string {
   if (!activePlan || !Array.isArray(activePlan.steps) || activePlan.steps.length === 0) {
-    return 'NONE - Awaiting Strategic Blueprint';
+    return 'NONE - No active plan';
   }
   const step = activePlan.steps[activePlan.currentStepIndex];
   if (!step || !Array.isArray(step.position)) {
@@ -512,11 +512,11 @@ export async function decideNextAction(params: DecideNextActionParams): Promise<
   if (!apiKey && !proxy) {
     return {
       action: 'WAIT',
-      reason: 'Missing Credentials. Set MISTRAL_API_KEY or VITE_PROXY_URL.',
-      reasoningSteps: ['Credential check failed', 'Holding simulation', 'Awaiting uplink token'],
-      learningNote: 'No credentials available \u2014 operating offline.',
+      reason: 'No credentials available. Set MISTRAL_API_KEY or VITE_PROXY_URL.',
+      reasoningSteps: ['Credential check failed', 'Holding simulation', 'Awaiting API key'],
+      learningNote: 'No credentials available.',
       knowledgeCategory: 'Synthesis',
-      taskLabel: 'Awaiting Uplink',
+      taskLabel: 'Waiting for credentials',
       connectivityConfirmation: 'No connectivity without credentials.',
       groundingLinks: []
     };

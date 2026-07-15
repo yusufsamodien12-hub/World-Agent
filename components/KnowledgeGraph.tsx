@@ -153,7 +153,7 @@ export const KnowledgeGraph: React.FC<{ entries: KnowledgeEntry[], width?: numbe
   return (
     <div className="relative overflow-hidden bg-black/60 rounded-3xl border border-white/5 mb-6 group" style={{ width, height }}>
       <div className="absolute top-4 left-5 z-10">
-        <div className="text-[10px] font-black uppercase text-white/30 tracking-[0.3em]">Neural Topology</div>
+        <div className="text-[10px] font-black uppercase text-white/30 tracking-[0.3em]">Knowledge Graph</div>
         <div className="flex gap-2 mt-2">
           {Object.entries(CATEGORY_COLORS).map(([cat, col]) => (
             <div key={cat} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: col }} title={cat} />
