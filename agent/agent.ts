@@ -24,7 +24,8 @@ import {
   AgentState, AgentConfig, AgentCallbacks, AIActionResponse,
   WorldObject, LogEntry, KnowledgeEntry, ConstructionPlan,
   WorldObjectType, NetworkStatus, PlanStep, MemoryProvider,
-  ProgressionStats
+  ProgressionStats, LearningMetrics, CategoryMastery,
+  MAX_LOGS, MAX_KNOWLEDGE_ENTRIES
 } from './types';
 import { decideNextAction } from './aiLogic';
 import { createMemoryProvider } from './memory';
@@ -225,6 +226,7 @@ export class ArchitectAgent {
     this.config = {
       proxyUrl: config.proxyUrl ?? '',
       mistralApiKey: config.mistralApiKey ?? '',
+      blockforgeUrl: config.blockforgeUrl ?? '',
       initialGoal: config.initialGoal ?? INITIAL_GOAL,
       stateEndpoint: config.stateEndpoint ?? '',
       terrainHeightFn: config.terrainHeightFn ?? getTerrainHeight,
@@ -327,6 +329,10 @@ export class ArchitectAgent {
       timestamp: Date.now()
     };
     this.state.logs = [...this.state.logs, entry];
+    // Cap logs to prevent unbounded growth
+    if (this.state.logs.length > MAX_LOGS) {
+      this.state.logs = this.state.logs.slice(-MAX_LOGS);
+    }
     this.callbacks.onLog(entry);
     this.emitState();
   }
@@ -363,6 +369,7 @@ export class ArchitectAgent {
     const apiStartTime = Date.now();
 
     try {
+      const recentActions = this.state.logs.slice(-10);
       const decision = await decideNextAction({
         history: this.state.logs,
         worldObjects: this.state.objects,
@@ -372,6 +379,8 @@ export class ArchitectAgent {
         activePlan: this.state.activePlan,
         proxyUrl: this.config.proxyUrl || undefined,
         mistralApiKey: this.config.mistralApiKey || undefined,
+        blockforgeUrl: this.config.blockforgeUrl || undefined,
+        recentActions,
       });
 
       const apiLatency = Date.now() - apiStartTime;
@@ -489,10 +498,33 @@ export class ArchitectAgent {
     }
   }
 
-  /** Save current state via memory provider */
+  /** Save current state via memory provider — only if meaningful changes occurred */
+  private lastSaveObjectCount = 0;
+  private lastSaveKnowledgeCount = 0;
+  private saveQueued = false;
+
   async save(): Promise<void> {
-    if (this.state.objects.length > 0 || this.state.knowledgeBase.length > 0) {
+    const objChanged = this.state.objects.length !== this.lastSaveObjectCount;
+    const kbChanged = this.state.knowledgeBase.length !== this.lastSaveKnowledgeCount;
+
+    // Only save when objects or knowledge actually changed
+    if (!objChanged && !kbChanged) return;
+    if (this.state.objects.length === 0 && this.state.knowledgeBase.length === 0) return;
+
+    // Debounce: queue save, only write once per tick
+    if (this.saveQueued) return;
+    this.saveQueued = true;
+
+    // Use microtask delay to coalesce multiple calls in same tick
+    await new Promise(resolve => setTimeout(resolve, 0));
+    this.saveQueued = false;
+
+    try {
       await this.memory.save(this.state);
+      this.lastSaveObjectCount = this.state.objects.length;
+      this.lastSaveKnowledgeCount = this.state.knowledgeBase.length;
+    } catch (err) {
+      this.logger.error('Agent', 'State save failed', err);
     }
   }
 
@@ -552,6 +584,13 @@ export class ArchitectAgent {
         unlockedBlueprints: ['Core Protocol', 'Adaptive Clustering']
       },
       apiMetrics: [],
+      learningMetrics: {
+        categoryMastery: [],
+        totalConcepts: 0,
+        decisionQualityScore: 0,
+        actionDiversity: 0,
+        reinforcedCount: 0
+      }
     };
   }
 
@@ -675,18 +714,60 @@ export class ArchitectAgent {
     }
 
     // Update state
+    const newTotalBlocks = this.state.progression.totalBlocks + 1;
+    const isStructure = ['modular_unit', 'wall', 'roof', 'door', 'fence'].includes(targetType);
     this.state = {
       ...this.state,
       objects: [...this.state.objects, newObj],
       learningIteration: this.state.learningIteration + 1,
       activePlan: updatedPlan,
       knowledgeBase: newKnowledge,
+      learningMetrics: this.updateLearningMetrics(decision, newKnowledge.length),
       progression: {
         ...this.state.progression,
-        totalBlocks: this.state.progression.totalBlocks + 1,
-        complexityLevel: Math.floor((this.state.progression.totalBlocks + 1) / 5) + 1,
-        structuresCompleted: this.state.progression.structuresCompleted + (targetType === 'modular_unit' ? 1 : 0)
+        totalBlocks: newTotalBlocks,
+        complexityLevel: Math.floor(newTotalBlocks / 5) + 1,
+        structuresCompleted: this.state.progression.structuresCompleted + (isStructure ? 1 : 0)
       }
+    };
+  }
+
+  private updateLearningMetrics(decision: AIActionResponse, totalKnowledgeCount: number): LearningMetrics {
+    const prev = this.state.learningMetrics || {
+      categoryMastery: [], totalConcepts: 0, decisionQualityScore: 0, actionDiversity: 0, reinforcedCount: 0
+    };
+
+    // Update category mastery
+    const cat = decision.knowledgeCategory;
+    const existingIdx = prev.categoryMastery.findIndex(c => c.category === cat);
+    const categoryMastery = [...prev.categoryMastery];
+    if (existingIdx >= 0) {
+      categoryMastery[existingIdx] = {
+        ...categoryMastery[existingIdx],
+        entryCount: categoryMastery[existingIdx].entryCount + 1,
+        masteryScore: Math.min(100, categoryMastery[existingIdx].masteryScore + 5),
+        lastReferenced: this.state.learningIteration
+      };
+    } else {
+      categoryMastery.push({
+        category: cat as any,
+        entryCount: 1,
+        masteryScore: 10,
+        lastReferenced: this.state.learningIteration
+      });
+    }
+
+    // Action diversity: count unique action types in recent logs
+    const recentActions = this.state.logs.slice(-10);
+    const uniqueActions = new Set(recentActions.map(l => l.type));
+    const actionDiversity = Math.min(100, Math.round((uniqueActions.size / 5) * 100));
+
+    return {
+      categoryMastery,
+      totalConcepts: totalKnowledgeCount,
+      decisionQualityScore: Math.min(100, prev.decisionQualityScore + 5),
+      actionDiversity,
+      reinforcedCount: prev.reinforcedCount + 1
     };
   }
 

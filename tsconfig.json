@@ -25,7 +25,9 @@
       ]
     },
     "allowImportingTsExtensions": true,
-    "noEmit": true
+    "noEmit": true,
+    "downlevelIteration": true,
+    "strict": true
   },
   "exclude": [
     "node_modules",

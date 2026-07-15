@@ -56,6 +56,31 @@ export interface LogEntry {
   timestamp: number;
 }
 
+/** Per-category knowledge mastery score (0–100) */
+export interface CategoryMastery {
+  category: KnowledgeCategory;
+  /** Number of distinct knowledge entries in this category */
+  entryCount: number;
+  /** Rolling quality score based on recency & relevance (0-100) */
+  masteryScore: number;
+  /** Last iteration this category was referenced */
+  lastReferenced: number;
+}
+
+/** Learning metrics tracked across agent lifetime */
+export interface LearningMetrics {
+  /** Mastery per knowledge category */
+  categoryMastery: CategoryMastery[];
+  /** Total distinct concepts learned */
+  totalConcepts: number;
+  /** Average quality of recent decisions (0-100) */
+  decisionQualityScore: number;
+  /** Number of unique action types taken in last 10 steps */
+  actionDiversity: number;
+  /** Knowledge entries that have been reinforced (used in prompt) */
+  reinforcedCount: number;
+}
+
 export interface GroundingLink {
   uri: string;
   title: string;
@@ -122,14 +147,20 @@ export interface AgentState {
   networkStatus: NetworkStatus;
   activePlan?: ConstructionPlan;
   apiMetrics: ApiMetric[];
-  avatarTarget?: [number, number, number]; // current roam/observe target the avatar moves toward
+  avatarTarget?: [number, number, number];
+  learningMetrics?: LearningMetrics;
 }
+
+export const MAX_LOGS = 200;
+export const MAX_KNOWLEDGE_ENTRIES = 100;
 
 export interface AgentConfig {
   /** Proxy URL (Cloudflare Worker) for secure AI calls */
   proxyUrl?: string;
   /** Direct Mistral API key (falls back to proxy if absent) */
   mistralApiKey?: string;
+  /** BlockForge /design endpoint for mesh generation */
+  blockforgeUrl?: string;
   /** Initial goal for the simulation */
   initialGoal?: string;
   /** State persistence endpoint (defaults to localStorage) */
