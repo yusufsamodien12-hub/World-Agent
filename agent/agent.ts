@@ -698,10 +698,28 @@ this.updateTask('Processing response...', 40);
       updatedPlan = undefined;
     }
 
-    // Accumulate knowledge
+    // Accumulate knowledge with smart deduplication
     const newKnowledge = [...this.state.knowledgeBase];
     const titleCandidate = decision.learningNote?.split(':')[0]?.trim() || 'Synthesis Logic';
-    if (!newKnowledge.find(k => k.title === titleCandidate)) {
+    
+    // Normalize title for comparison (lowercase, strip numbers/symbols, collapse spaces)
+    const normalize = (s: string) => s.toLowerCase().replace(/[#0-9_|/-]/g, ' ').replace(/\s+/g, ' ').trim();
+    const normalizedNew = normalize(titleCandidate);
+    
+    // Check for near-duplicates: >50% word overlap with existing entries
+    const newWords = new Set(normalizedNew.split(' ').filter(w => w.length > 3));
+    const isDuplicate = newKnowledge.some(k => {
+      const existingWords = new Set(normalize(k.title).split(' ').filter(w => w.length > 3));
+      if (newWords.size === 0 || existingWords.size === 0) return false;
+      const intersection = new Set([...newWords].filter(w => existingWords.has(w)));
+      return intersection.size / Math.max(newWords.size, existingWords.size) > 0.5;
+    });
+
+    // Count entries per category and enforce limits
+    const catCount = newKnowledge.filter(k => k.category === decision.knowledgeCategory).length;
+    const MAX_PER_CATEGORY = 5;
+
+    if (!isDuplicate && catCount < MAX_PER_CATEGORY && newKnowledge.length < MAX_KNOWLEDGE_ENTRIES) {
       newKnowledge.push({
         id: generateId(),
         title: titleCandidate,

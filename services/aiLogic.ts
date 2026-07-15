@@ -713,7 +713,7 @@ export async function decideNextAction(
       "reason": "Why placing this component",
       "reasoningSteps": ["Analysis 1", "Analysis 2", "Decision"],
       "learningNote": "Architectural insight gained",
-      "knowledgeCategory": "Architecture",
+      "knowledgeCategory": "Design",
       "taskLabel": "Building [name] - Step X/5",
       "outcomeSummary": "Final building intent and expected architectural result",
       "connectivityConfirmation": "All components are connected in a single coherent structure.",

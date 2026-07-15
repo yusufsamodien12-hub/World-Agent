@@ -68,7 +68,7 @@ const WebKnowledgeGraph: React.FC<WebKnowledgeGraphProps> = ({ entries, onSelect
     const radius = (d: GraphNode) => d.type === 'category' ? 18 + d.val * 2 : 6 + d.val * 1.5;
     const color = (d: GraphNode) => {
       if (d.type === 'category') return '#f59e0b';
-      const cols: Record<string, string> = { Architecture: '#f59e0b', Environment: '#10b981', Infrastructure: '#f97316', Energy: '#eab308', Synthesis: '#8b5cf6' };
+      const cols: Record<string, string> = { Design: '#f59e0b', Nature: '#10b981', Systems: '#f97316', Discovery: '#eab308', Craft: '#8b5cf6' };
       return cols[d.category] || '#94a3b8';
     };
 

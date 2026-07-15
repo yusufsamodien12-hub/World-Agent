@@ -1,7 +1,7 @@
 
 export type WorldObjectType = 'wall' | 'roof' | 'door' | 'crop' | 'tree' | 'well' | 'fence' | 'modular_unit' | 'solar_panel' | 'water_collector';
 
-export type KnowledgeCategory = 'Infrastructure' | 'Energy' | 'Environment' | 'Architecture' | 'Synthesis';
+export type KnowledgeCategory = 'Design' | 'Nature' | 'Systems' | 'Discovery' | 'Craft';
 
 export type MeshGeometryKind = 'box' | 'cylinder' | 'cone' | 'sphere' | 'torus';
 

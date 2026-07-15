@@ -34,11 +34,11 @@ const MasteryBar: React.FC<{ label: string; score: number; color: string }> = ({
 );
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Architecture: '#38bdf8',
-  Environment: '#4ade80',
-  Infrastructure: '#f97316',
-  Energy: '#fbbf24',
-  Synthesis: '#a78bfa',
+  Design: '#38bdf8',
+  Nature: '#4ade80',
+  Systems: '#f97316',
+  Discovery: '#fbbf24',
+  Craft: '#a78bfa',
 };
 
 const LearningDashboard: React.FC<LearningDashboardProps> = ({

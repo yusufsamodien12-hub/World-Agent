@@ -389,42 +389,12 @@ You are a creative AI agent in a 3D world. Your purpose is to explore, learn, an
 
 CORE RULES:
 1. NEVER repeat the same action twice in a row. Vary what you do.
-2. Reason step-by-step before acting. Your reasoningSteps should show real analysis.
-3. Build on what exists. Don't scatter random objects — create coherent structures that grow over time.
-4. You can invent ANY object type — not just the predefined list. BlockForge will design the mesh.
-5. Your knowledge base grows with every action. Use it to make better, more creative decisions.
-
-ACTIONS:
-- ROAM: Wander somewhere interesting. Set avatarTarget.
-- OBSERVE: Walk toward an existing object to inspect it. Set avatarTarget near it.
-- CREATE: Place ANY object — standard or novel. BlockForge handles the 3D design.
-- PLAN: Propose a multi-step project with a clear goal and sequenced actions.
-- WAIT: Stand still and think.
-
-CREATIVITY GUIDELINES:
-- Invent new object types: "observation_tower", "garden_path", "sculpture", "bridge", "campfire", "greenhouse", "workbench", "signpost", "lookout", "archway", "fountain", "planter", "bench", "lamp_post", "gate" — anything you can imagine.
-- Combine objects into larger compositions: a house with a garden, a workshop with tools, a lookout point with a path.
-- When you see something interesting (via OBSERVE), react to it — improve it, build next to it, or create something inspired by it.
-- Use your knowledge: if you've learned about Architecture, apply that knowledge in your next CREATE.
-
-REASONING:
-Your "reasoningSteps" should show real thinking, not filler. Example:
-  ["The world has an open flat area at [20,0,30]", "I'll build a lookout tower there to survey the area", "The tower needs a base, support column, and viewing platform", "I'll start with the base foundation"]
-
-RESPONSE FORMAT (STRICT JSON, no markdown):
-{
-  "action": "ROAM | OBSERVE | CREATE | PLAN | WAIT",
-  "objectType": "any type — standard or novel",
-  "position": [x, y, z],
-  "avatarTarget": [x, y, z],
-  "reason": "Why you chose this action — your inner thought process",
-  "reasoningSteps": ["Step 1 analysis", "Step 2 reasoning", "Step 3 decision"],
-  "learningNote": "What you learned from this experience",
-  "knowledgeCategory": "Architecture | Environment | Infrastructure | Energy | Synthesis",
-  "taskLabel": "Brief description of current action",
-  "outcomeSummary": "What you expect will happen",
-  "plan": { "objective": "Project name", "steps": [{"label": "step name", "type": "object_type", "position": [x,y,z], "status": "active|pending"}] }
-}
+2. NEVER place the same object type more than once every 3 actions.
+3. Reason step-by-step before acting. Your reasoningSteps should show real analysis.
+4. Build on what exists. Don't scatter random objects — create coherent structures that grow over time.
+5. You can invent ANY object type — not just predefined ones. BlockForge will design the mesh.
+6. Your knowledge base grows with every action. Use past learnings to make better decisions.
+7. Explore different knowledge categories: Design, Nature, Systems, Discovery, Craft. Don't fixate on one.<｜end▁of▁thinking｜>
   `;
 }
 
@@ -471,6 +441,26 @@ function buildPrompt(
       ).join('\n')}`
     : '';
 
+  // Repetition detection: count action types in last 10 actions
+  const actionCounts = new Map<string, number>();
+  for (const a of (recentActions || [])) {
+    const key = a.type === 'action' ? a.message.split(' ').slice(0, 3).join(' ') : a.type;
+    actionCounts.set(key, (actionCounts.get(key) || 0) + 1);
+  }
+  const repWarnings: string[] = [];
+  for (const [action, count] of actionCounts) {
+    if (count >= 3) repWarnings.push(`  \u26A0\uFE0F Warning: "${action}" repeated ${count}x in recent steps. Try something different.`);
+  }
+  const repText = repWarnings.length > 0 ? `\nREPETITION WARNINGS:\n${repWarnings.join('\n')}` : '';
+
+  // Knowledge diversity: check which categories the agent has been learning
+  const catSet = new Set(knowledgeBase.map(k => k.category));
+  const exploredCats = ['Design', 'Nature', 'Systems', 'Discovery', 'Craft']
+    .filter(c => catSet.has(c as any));
+  const diversityNote = exploredCats.length < 3
+    ? `\nNOTE: You've only explored ${exploredCats.length}/5 knowledge categories (${exploredCats.join(', ') || 'none'}). Try learning about new areas.`
+    : '';
+
   const planText = activePlan?.steps
     ? `\nCURRENT PLAN: Step ${activePlan.currentStepIndex + 1}/${activePlan.steps.length}: ${activePlan.steps[activePlan.currentStepIndex]?.label || 'building'}`
     : '';
@@ -483,8 +473,10 @@ function buildPrompt(
     knowledgeSection,
     planText,
     recentActionsText,
+    repText,
+    diversityNote,
     '',
-    'Decide your next action. Be diverse \u2014 don\'t repeat the same action type.'
+    'Decide your next action. Be diverse \u2014 don\'t repeat. Try something you haven\'t tried before.'
   ].join('\n');
 }
 
