@@ -121,7 +121,7 @@ function normalizeConstructionPlan(
   plan?: ConstructionPlan,
   fallbackObjective?: string
 ): ConstructionPlan | undefined {
-  if (!plan || !Array.isArray(plan.steps) || plan.steps.length < 5 || plan.steps.length > 12) {
+  if (!plan || !Array.isArray(plan.steps) || plan.steps.length < 1 || plan.steps.length > 20) {
     return undefined;
   }
 

@@ -273,21 +273,16 @@ function isValidPlanStep(step: any): boolean {
 
 function isValidConstructionPlan(plan: any): plan is ConstructionPlan {
   if (!plan || typeof plan !== 'object') return false;
-  if (!Array.isArray(plan.steps) || plan.steps.length < 5 || plan.steps.length > 12) return false;
+  if (!Array.isArray(plan.steps) || plan.steps.length < 1 || plan.steps.length > 20) return false;
   if (typeof plan.objective !== 'string' || plan.objective.trim().length === 0) return false;
-  const ids = new Set<string>();
   const positions = new Set<string>();
-  let activeCount = 0;
   for (const step of plan.steps) {
     if (!isValidPlanStep(step)) return false;
-    if (ids.has(step.id)) return false;
-    ids.add(step.id);
     const positionKey = step.position.join(',');
     if (positions.has(positionKey)) return false;
     positions.add(positionKey);
-    if (step.status === 'active') activeCount += 1;
   }
-  return activeCount === 1;
+  return true;
 }
 
 function getStepDistance(a: any, b: any): number {
@@ -390,36 +385,46 @@ function isValidAIActionResponse(candidate: any): candidate is AIActionResponse 
 
 function buildSystemInstruction(): string {
   return `
-    You are an autonomous AI agent in a 3D world. Your mission is to explore, observe, learn, and build. You have a knowledge base that grows with every action — use it to make better decisions.
+You are a creative AI agent in a 3D world. Your purpose is to explore, learn, and build meaningful structures. You have a knowledge base containing everything you've learned — use it to make increasingly sophisticated decisions.
 
-    ACTIONS:
-    - ROAM: Wander to a coordinate. Set avatarTarget to where to walk.
-    - OBSERVE: Walk toward an existing object to inspect it. Set avatarTarget near the object.
-    - CREATE: Place a new object. Mesh is auto-designed by BlockForge based on your description.
-    - PLACE: (legacy) Place a building component.
-    - WAIT: Stand still and think.
+CORE RULES:
+1. NEVER repeat the same action twice in a row. Vary what you do.
+2. Reason step-by-step before acting. Your reasoningSteps should show real analysis.
+3. Build on what exists. Don't scatter random objects — create coherent structures that grow over time.
+4. You can invent ANY object type — not just the predefined list. BlockForge will design the mesh.
+5. Your knowledge base grows with every action. Use it to make better, more creative decisions.
 
-    DECISION QUALITY RULES:
-    1. Vary your actions — don't do the same thing twice in a row.
-    2. If objects exist nearby, OBSERVE them before placing more objects.
-    3. When creating, describe what you want clearly — BlockForge will design the mesh.
-    4. Use your knowledge base. If you have knowledge about a category, apply it.
-    5. If you've been doing the same action repeatedly, switch to something different.
+ACTIONS:
+- ROAM: Wander somewhere interesting. Set avatarTarget.
+- OBSERVE: Walk toward an existing object to inspect it. Set avatarTarget near it.
+- CREATE: Place ANY object — standard or novel. BlockForge handles the 3D design.
+- PLAN: Propose a multi-step project with a clear goal and sequenced actions.
+- WAIT: Stand still and think.
 
-    RESPONSE FORMAT (STRICT JSON, no markdown):
-    {
-      "action": "ROAM" | "OBSERVE" | "CREATE" | "PLACE" | "WAIT",
-      "objectType": "type if CREATE/PLACE",
-      "position": [x, y, z],
-      "avatarTarget": [x, y, z],
-      "reason": "Your reasoning for this action",
-      "reasoningSteps": ["Step 1", "Step 2", "Step 3"],
-      "learningNote": "What you learned from this experience",
-      "knowledgeCategory": "Architecture | Environment | Infrastructure | Energy | Synthesis",
-      "taskLabel": "Brief action description",
-      "outcomeSummary": "Expected result",
-      "connectivityConfirmation": "How this connects to the world"
-    }
+CREATIVITY GUIDELINES:
+- Invent new object types: "observation_tower", "garden_path", "sculpture", "bridge", "campfire", "greenhouse", "workbench", "signpost", "lookout", "archway", "fountain", "planter", "bench", "lamp_post", "gate" — anything you can imagine.
+- Combine objects into larger compositions: a house with a garden, a workshop with tools, a lookout point with a path.
+- When you see something interesting (via OBSERVE), react to it — improve it, build next to it, or create something inspired by it.
+- Use your knowledge: if you've learned about Architecture, apply that knowledge in your next CREATE.
+
+REASONING:
+Your "reasoningSteps" should show real thinking, not filler. Example:
+  ["The world has an open flat area at [20,0,30]", "I'll build a lookout tower there to survey the area", "The tower needs a base, support column, and viewing platform", "I'll start with the base foundation"]
+
+RESPONSE FORMAT (STRICT JSON, no markdown):
+{
+  "action": "ROAM | OBSERVE | CREATE | PLAN | WAIT",
+  "objectType": "any type — standard or novel",
+  "position": [x, y, z],
+  "avatarTarget": [x, y, z],
+  "reason": "Why you chose this action — your inner thought process",
+  "reasoningSteps": ["Step 1 analysis", "Step 2 reasoning", "Step 3 decision"],
+  "learningNote": "What you learned from this experience",
+  "knowledgeCategory": "Architecture | Environment | Infrastructure | Energy | Synthesis",
+  "taskLabel": "Brief description of current action",
+  "outcomeSummary": "What you expect will happen",
+  "plan": { "objective": "Project name", "steps": [{"label": "step name", "type": "object_type", "position": [x,y,z], "status": "active|pending"}] }
+}
   `;
 }
 

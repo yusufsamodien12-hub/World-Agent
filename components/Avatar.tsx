@@ -3,13 +3,51 @@ import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
+interface WorldObject {
+  id: string;
+  position: [number, number, number];
+  rotation: [number, number, number];
+  scale: [number, number, number];
+  type?: string;
+  customMesh?: { parts?: Array<{ geometry: string; args: number[] }> };
+}
+
 interface AvatarProps {
   position: [number, number, number];
   targetPosition: [number, number, number] | null;
   isThinking?: boolean;
+  objects?: WorldObject[];
+  /** Collision radius — how close avatar can get to objects (default: 1.2) */
+  collisionRadius?: number;
 }
 
-export const Avatar: React.FC<AvatarProps> = ({ position, targetPosition, isThinking }) => {
+/** Simple bounding-box collision against all world objects */
+function resolveCollision(
+  desired: [number, number, number],
+  objects: WorldObject[],
+  radius: number
+): [number, number, number] {
+  for (const obj of objects) {
+    const dx = desired[0] - obj.position[0];
+    const dz = desired[2] - obj.position[2];
+    const dist = Math.sqrt(dx * dx + dz * dz);
+    if (dist < radius) {
+      // Push away from this object along the horizontal plane
+      const pushDir = dist > 0.01
+        ? [dx / dist, 0, dz / dist] as [number, number, number]
+        : [1, 0, 0] as [number, number, number];
+      const pushDist = radius - dist;
+      return [
+        desired[0] + pushDir[0] * pushDist,
+        desired[1],
+        desired[2] + pushDir[2] * pushDist,
+      ];
+    }
+  }
+  return desired;
+}
+
+export const Avatar: React.FC<AvatarProps> = ({ position, targetPosition, isThinking, objects = [], collisionRadius = 1.2 }) => {
   const meshRef = useRef<THREE.Group>(null);
   const ringRef = useRef<THREE.Mesh>(null);
   const scannerRef = useRef<THREE.Mesh>(null);
@@ -24,9 +62,14 @@ export const Avatar: React.FC<AvatarProps> = ({ position, targetPosition, isThin
       // Update target vector from prop
       targetVec.set(...position);
       
-      // Smoothly interpolate current visual position towards the target position
-      const prevPos = currentPos.current.clone();
-      currentPos.current.lerp(targetVec, 0.1);
+      // Smoothly interpolate with collision resolution
+      const desired: [number, number, number] = [
+        THREE.MathUtils.lerp(currentPos.current.x, targetVec.x, 0.1),
+        THREE.MathUtils.lerp(currentPos.current.y, targetVec.y, 0.1),
+        THREE.MathUtils.lerp(currentPos.current.z, targetVec.z, 0.1),
+      ];
+      const resolved = resolveCollision(desired, objects, collisionRadius);
+      currentPos.current.set(resolved[0], resolved[1], resolved[2]);
       meshRef.current.position.copy(currentPos.current);
       
       // Movement-based tilt
