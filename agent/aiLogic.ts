@@ -26,13 +26,19 @@ const API_TIMEOUT_MS = 15000; // 15-second max wait for Mistral
 
 async function fetchCustomMeshFromBlockforge(
   description: string,
-  source: string = 'world-agent'
+  source: string = 'world-agent',
+  options?: { size?: string; color?: string; material?: string; features?: string }
 ): Promise<CustomMeshSpec | undefined> {
   try {
+    const body: any = { description, source };
+    if (options?.size) body.size = options.size;
+    if (options?.color) body.color = options.color;
+    if (options?.material) body.material = options.material;
+    if (options?.features) body.features = options.features;
     const resp = await fetch(BLOCKFORGE_DESIGN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ description, source }),
+      body: JSON.stringify(body),
     });
     if (!resp.ok) {
       console.warn(`BlockForge /design returned ${resp.status} for "${description}"`);
