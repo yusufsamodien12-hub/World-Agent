@@ -216,6 +216,11 @@ function App() {
   });
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const isProcessingRef = useRef(false);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const lastStepTime = useRef(0);
+
   const [isAuto, setIsAuto] = useState(true);
   const [currentTask, setCurrentTask] = useState<string>("Analyzing area...");
   const [taskProgress, setTaskProgress] = useState(0);
@@ -229,7 +234,7 @@ function App() {
     }));
   }, []);
 
-  // Load state on mount
+  // Load state on mount (run once)
   useEffect(() => {
     logger.info('App', '🔄 Initializing memory system');
     async function initMemory() {
@@ -244,18 +249,15 @@ function App() {
           setState(prev => ({
             ...prev,
             ...savedState,
-            ui: savedState.ui || prev.ui,
-            apiMetrics: savedState.apiMetrics || prev.apiMetrics,
             logs: savedState.logs || prev.logs
           }));
-          addLog("Previous state loaded.", "success");
         }
       } catch (err) {
         console.error("Memory initialization failed:", err);
       }
     }
     initMemory();
-  }, [addLog]);
+  }, []); // Run once on mount only
 
   // Auto-save state
   useEffect(() => {
@@ -268,8 +270,14 @@ function App() {
   }, [state.objects, state.knowledgeBase, state.progression, state.activePlan]);
 
   const runSimulationStep = useCallback(async () => {
-    if (isProcessing) return;
+    // Rate-limit guard: prevent re-execution within 6s
+    const now = Date.now();
+    if (isProcessingRef.current || now - lastStepTime.current < 6000) return;
+    lastStepTime.current = now;
+    isProcessingRef.current = true;
+
     setIsProcessing(true);
+    const currentState = stateRef.current;
     setState(prev => ({ ...prev, networkStatus: 'syncing' }));
     setTaskProgress(5);
 
@@ -282,12 +290,12 @@ function App() {
 
     try {
       const decision: AIActionResponse = await decideNextAction(
-        state.logs, 
-        state.objects, 
-        state.currentGoal, 
-        state.knowledgeBase,
+        currentState.logs, 
+        currentState.objects, 
+        currentState.currentGoal, 
+        currentState.knowledgeBase,
         getTerrainHeight,
-        state.activePlan
+        currentState.activePlan
       );
       
       const apiLatency = Date.now() - apiStartTime;
@@ -443,22 +451,32 @@ function App() {
         apiMetrics: [...prev.apiMetrics, { id: generateId(), timestamp: Date.now(), latency: Date.now() - apiStartTime, status: 'error' as const }].slice(-20) 
       }));
     } finally {
+      isProcessingRef.current = false;
       setIsProcessing(false);
       setTaskProgress(0);
       setState(prev => ({ 
         ...prev, 
         networkStatus: prev.networkStatus === 'error' ? 'error' : 'connected' 
       }));
-      setCurrentTask(isAuto ? "Scanning Topology..." : "Standby");
+      setCurrentTask(isAuto ? "Scanning..." : "Standby");
     }
-  }, [isProcessing, state, isAuto, addLog]);
+  }, [isAuto, addLog]); // Note: intentionally excludes `state` — use stateRef.current inside
 
+  // Stable auto-pilot timer: uses refs to avoid recreating the interval on every render
+  const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (isAuto && !isProcessing) {
-      const t = setTimeout(runSimulationStep, 4500);
-      return () => clearTimeout(t);
+    function tick() {
+      if (!isAuto) return;
+      runSimulationStep();
+      autoTimerRef.current = setTimeout(tick, 8000);
     }
-  }, [isAuto, isProcessing, runSimulationStep]);
+    if (isAuto) {
+      autoTimerRef.current = setTimeout(tick, 8000);
+    }
+    return () => {
+      if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
+    };
+  }, [isAuto]); // Only depends on isAuto — stable timer
 
   useEffect(() => {
     if (logContainerRef.current) logContainerRef.current.scrollTo({ top: logContainerRef.current.scrollHeight, behavior: 'smooth' });
