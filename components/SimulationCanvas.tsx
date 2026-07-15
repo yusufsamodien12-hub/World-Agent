@@ -1,6 +1,5 @@
-
-import React, { useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
+import React, { useMemo, useRef, useCallback } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, ContactShadows } from '@react-three/drei';
 import { Sparkles } from '@react-three/drei';
 import * as THREE from 'three';
@@ -13,20 +12,19 @@ interface SimulationCanvasProps {
   avatarPos: [number, number, number];
   avatarTarget: [number, number, number] | null;
   activePlan?: ConstructionPlan;
+  freeCam: boolean;
+  onFreeCamChange: (free: boolean) => void;
 }
 
 const Terrain: React.FC = () => {
   const meshRef = React.useRef<THREE.Mesh>(null);
   
-  // Create a vertex-based terrain that matches getTerrainHeight logic
-  // Vast world scale: 1000x1000
   const geom = useMemo(() => {
     const g = new THREE.PlaneGeometry(1000, 1000, 128, 128);
     const pos = g.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i);
       const z = pos.getY(i);
-      // Multi-layered noise for more "vast" look
       const h = (Math.sin(x * 0.1) * Math.cos(z * 0.1) * 2.0) +
                 (Math.sin(x * 0.02) * Math.cos(z * 0.02) * 5.0);
       pos.setZ(i, h);
@@ -49,19 +47,70 @@ const Terrain: React.FC = () => {
   );
 };
 
-const SimulationCanvas: React.FC<SimulationCanvasProps> = ({ objects, avatarPos, avatarTarget, activePlan }) => {
+// Inner component that has access to the Three.js scene via useThree
+const CameraController: React.FC<{
+  avatarPos: [number, number, number];
+  freeCam: boolean;
+}> = ({ avatarPos, freeCam }) => {
+  const controlsRef = useRef<any>(null);
+
+  // When freeCam is disabled, keep orbit target locked to agent position
+  // When freeCam is enabled, let the user orbit freely
+  const controls = useMemo(() => {
+    if (!freeCam && controlsRef.current) {
+      controlsRef.current.target.set(avatarPos[0], avatarPos[1], avatarPos[2]);
+      controlsRef.current.update();
+    }
+  }, [freeCam, avatarPos]);
+
+  return (
+    <OrbitControls
+      ref={controlsRef}
+      makeDefault
+      target={freeCam ? undefined : [avatarPos[0], avatarPos[1], avatarPos[2]]}
+      enableDamping
+      dampingFactor={0.1}
+      minDistance={2}
+      maxDistance={200}
+      minPolarAngle={freeCam ? 0 : 0}
+      maxPolarAngle={freeCam ? Math.PI : Math.PI / 2.1}
+    />
+  );
+};
+
+const SimulationCanvas: React.FC<SimulationCanvasProps> = ({ 
+  objects, 
+  avatarPos, 
+  avatarTarget, 
+  activePlan, 
+  freeCam, 
+  onFreeCamChange 
+}) => {
   const ghostObjects = useMemo(() => {
     if (!activePlan) return [];
     return activePlan.steps.filter(step => step.status !== 'completed');
   }, [activePlan]);
 
   return (
-    <div className="w-full h-full bg-black">
+    <div className="w-full h-full bg-black relative">
+      {/* Free Cam Toggle Button */}
+      <button
+        onClick={() => onFreeCamChange(!freeCam)}
+        className={`absolute top-4 left-4 z-50 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-2xl ${
+          freeCam 
+            ? 'bg-sky-500 text-white shadow-sky-500/20 border border-sky-400/50' 
+            : 'bg-black/60 text-white/60 backdrop-blur-xl border border-white/10 hover:text-white hover:bg-black/80'
+        }`}
+        title={freeCam ? 'Snap back to agent' : 'Break free - free camera'}
+      >
+        {freeCam ? '🔗 Follow Agent' : '🔓 Free Camera'}
+      </button>
+
       <Canvas camera={{ position: [10, 8, 12], fov: 45, far: 2000 }} shadows>
         <color attach="background" args={['#020617']} />
         <fogExp2 attach="fog" args={['#020617', 0.015]} />
         
-        <hemisphereLight skyColor="#f3f4f6" groundColor="#cbd5e1" intensity={0.22} />
+        <hemisphereLight args={['#f3f4f6', '#cbd5e1', 0.22]} />
         <ambientLight intensity={0.28} />
         <pointLight position={[8, 8, 8]} intensity={1.0} color="#ffffff" />
         <directionalLight 
@@ -110,14 +159,8 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({ objects, avatarPos,
         <Avatar position={avatarPos} targetPosition={avatarTarget} isThinking={activePlan === undefined} />
 
         <ContactShadows opacity={0.4} scale={100} blur={2.5} far={20} />
-        <OrbitControls
-          makeDefault
-          target={[avatarPos[0], avatarPos[1], avatarPos[2]]}
-          minPolarAngle={0}
-          maxPolarAngle={Math.PI / 2.1}
-        />
-
-        {/* Postprocessing effects disabled due to compatibility issues in the current package version. */}
+        
+        <CameraController avatarPos={avatarPos} freeCam={freeCam} />
       </Canvas>
     </div>
   );
