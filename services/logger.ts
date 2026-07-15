@@ -1,3 +1,7 @@
+/**
+ * @deprecated Use AgentLogger from 'agent/logger.ts' instead.
+ * This legacy file is kept for App.tsx backward compatibility.
+ */
 // Centralized logging system for debugging production issues
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';

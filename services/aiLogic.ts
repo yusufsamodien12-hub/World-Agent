@@ -1,4 +1,9 @@
 
+/**
+ * @deprecated The 'agent/' folder contains the canonical, framework-agnostic version.
+ * This legacy file is kept for App.tsx backward compatibility.
+ * TODO: Migrate App.tsx to import from '../agent' instead.
+ */
 import JSON5 from 'json5';
 import { WorldObject, LogEntry, WorldObjectType, GroundingLink, ConstructionPlan, KnowledgeEntry, KnowledgeCategory, CustomMeshSpec, MeshGeometryKind } from "../src/types";
 

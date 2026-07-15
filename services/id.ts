@@ -1,3 +1,7 @@
+/**
+ * @deprecated Import generateId from 'agent/agent.ts' (inline function) instead.
+ * Kept for backward compatibility with App.tsx.
+ */
 // Centralized ID generation.
 //
 // The previous approach (`Math.random().toString()`) is not collision-safe:

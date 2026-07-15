@@ -1,3 +1,8 @@
+/**
+ * @deprecated The 'agent/memory.ts' contains the canonical version with MemoryProvider interface.
+ * This legacy file is kept for App.tsx backward compatibility.
+ * TODO: Migrate App.tsx to use ArchitectAgent (agent/agent.ts) which handles persistence internally.
+ */
 import { SimulationState } from "../src/types";
 import { logger } from './logger';
 
