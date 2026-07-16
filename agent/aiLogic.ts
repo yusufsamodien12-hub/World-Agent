@@ -13,7 +13,7 @@ import {
 } from './types';
 import { getArchitectureKnowledgeForPrompt } from './overpass';
 import { getArtKnowledgeForPrompt } from './harvard';
-import * as JSON5 from 'json5';
+import JSON5 from 'json5';
 
 // ─── BlockForge Tool (MCP-style) ─────────────────────────────────────────
 // Every CREATE/PLACE action delegates mesh generation to the BlockForge

@@ -13,21 +13,27 @@
  *   await agent.step();
  */
 
-export { ArchitectAgent } from './agent';
-export { createMemoryProvider, LocalStorageMemory, ApiMemory } from './memory';
-export { AgentLogger } from './logger';
-export { queryBuildingKnowledge, getArchitectureKnowledgeForPrompt } from './overpass';
-export { queryArtByClassification, queryArtKnowledge, getArtKnowledgeForPrompt } from './harvard';
+// ─── Explicit imports (needed so Vite includes these modules in the bundle) ─
+// Value imports — these force Vite to include the module code
+import { ArchitectAgent } from './agent';
+import { createMemoryProvider, LocalStorageMemory, ApiMemory } from './memory';
+import { AgentLogger } from './logger';
+import { decideNextAction } from './aiLogic';
+import { queryBuildingKnowledge, getArchitectureKnowledgeForPrompt } from './overpass';
+import { queryArtByClassification, queryArtKnowledge, getArtKnowledgeForPrompt } from './harvard';
 
-// ─── Backward-compat wrappers for App.tsx ───────────────────────────────
-// These match the deprecated services/ API so App.tsx can switch its
-// imports to './agent' without changing call sites.
+// Type-only imports
+import type { MemoryProvider } from './memory';
+import type { DecideNextActionParams } from './aiLogic';
+import type { AIActionResponse, LogEntry as AgentLogEntry } from './types';
 
-import { decideNextAction, DecideNextActionParams } from './aiLogic';
-import { AIActionResponse, LogEntry as AgentLogEntry } from './types';
-
-// Re-export so App.tsx can import from '../agent'
-export { decideNextAction } from './aiLogic';
+// Re-exports so App.tsx can import everything from '../agent'
+export { ArchitectAgent, createMemoryProvider, LocalStorageMemory, ApiMemory, MemoryProvider };
+export { AgentLogger };
+export { decideNextAction, DecideNextActionParams };
+export type { AIActionResponse, AgentLogEntry as LogEntry };
+export { queryBuildingKnowledge, getArchitectureKnowledgeForPrompt };
+export { queryArtByClassification, queryArtKnowledge, getArtKnowledgeForPrompt };
 
 /** @deprecated Switch to decideNextAction(params) with object argument */
 export async function decideNextActionLegacy(
