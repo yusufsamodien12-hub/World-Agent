@@ -4,10 +4,7 @@ import { Brain, Activity, Network, History, Terminal as TerminalIcon, Target, Wa
 import { KnowledgeGraph } from '../components/KnowledgeGraph';
 import WebKnowledgeGraph from '../components/WebKnowledgeGraph';
 import { WorldObject, LogEntry, SimulationState, KnowledgeEntry, GroundingLink, ConstructionPlan, KnowledgeCategory, WorldObjectType } from './types';
-import { decideNextAction, AIActionResponse } from '../services/aiLogic';
-import { loadSimulationState, saveSimulationState } from '../services/memoryService';
-import { logger } from '../services/logger';
-import { generateId } from '../services/id';
+import { decideNextActionLegacy as decideNextAction, AIActionResponse, loadSimulationState, saveSimulationState, logger, generateId } from '../agent';
 
 const INITIAL_GOAL = "Synthesize Sustainable Modular Settlement";
 
