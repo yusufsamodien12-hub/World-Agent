@@ -372,41 +372,69 @@ function computePlanConnectivitySummary(plan: ConstructionPlan): string {
 // ─── Response Validation ────────────────────────────────────────────────────
 
 function isValidAIActionResponse(candidate: any): candidate is AIActionResponse {
-  const VALID_ACTIONS = ['PLACE', 'MOVE', 'WAIT', 'ROAM', 'OBSERVE', 'CREATE'];
-  return (
-    candidate &&
-    typeof candidate === 'object' &&
-    VALID_ACTIONS.includes(candidate.action) &&
-    typeof candidate.reason === 'string' && candidate.reason.trim().length > 0 &&
-    Array.isArray(candidate.reasoningSteps) && candidate.reasoningSteps.every((step: any) => typeof step === 'string') &&
-    (candidate.decisionFactors === undefined || (Array.isArray(candidate.decisionFactors) && candidate.decisionFactors.every((f: any) => typeof f === 'string'))) &&
-    (candidate.connectivityConfirmation === undefined || typeof candidate.connectivityConfirmation === 'string') &&
-    typeof candidate.learningNote === 'string' && candidate.learningNote.trim().length > 0 &&
-    typeof candidate.knowledgeCategory === 'string' &&
-    typeof candidate.taskLabel === 'string' && candidate.taskLabel.trim().length > 0
-  );
+  const VALID_ACTIONS = ['PLACE', 'MOVE', 'WAIT', 'ROAM', 'OBSERVE', 'CREATE', 'REFLECT'];
+  if (!candidate || typeof candidate !== 'object') return false;
+  if (!VALID_ACTIONS.includes(candidate.action)) return false;
+  if (typeof candidate.reason !== 'string' || candidate.reason.trim().length === 0) return false;
+  if (!Array.isArray(candidate.reasoningSteps) || candidate.reasoningSteps.length === 0) return false;
+  for (const step of candidate.reasoningSteps) {
+    if (typeof step !== 'string') return false;
+  }
+  if (candidate.decisionFactors !== undefined && (!Array.isArray(candidate.decisionFactors) || !candidate.decisionFactors.every((f: any) => typeof f === 'string'))) return false;
+  if (candidate.connectivityConfirmation !== undefined && typeof candidate.connectivityConfirmation !== 'string') return false;
+  if (typeof candidate.learningNote !== 'string' || candidate.learningNote.trim().length === 0) return false;
+  if (typeof candidate.knowledgeCategory !== 'string') return false;
+  if (typeof candidate.taskLabel !== 'string' || candidate.taskLabel.trim().length === 0) return false;
+  return true;
 }
 
 // ─── System Prompt ──────────────────────────────────────────────────────────
 
 function buildSystemInstruction(): string {
-  return `
-You are a creative AI agent in a 3D world. Your purpose is to explore, learn, and build meaningful structures. You have a knowledge base containing everything you've learned — use it to make increasingly sophisticated decisions.
+  return `You are a creative AI agent in a 3D world. Your purpose is to explore, learn, and build meaningful structures. You have a knowledge base that records everything you've learned — use it to drive increasingly sophisticated decisions.
 
-CORE RULES:
-1. NEVER repeat the same action twice in a row. Vary what you do.
-2. NEVER place the same object type more than once every 3 actions.
-3. Reason step-by-step before acting. Your reasoningSteps should show real analysis.
-4. Build on what exists. Don't scatter random objects — create coherent structures that grow over time.
-5. You can invent ANY object type — not just predefined ones. BlockForge will design the mesh.
-6. Your knowledge base grows with every action. Use past learnings to make better decisions.
-7. Explore different knowledge categories: Design, Nature, Systems, Discovery, Craft. Don't fixate on one.<｜end▁of▁thinking｜>
-  `;
+## THINKING FRAMEWORK
+Before every action, run through this mental checklist:
+1. SCAN — What's around me right now? Objects nearby, knowledge gaps, recent patterns.
+2. ANALYZE — What have I been doing lately? Am I stuck in a loop? What haven't I tried?
+3. DECIDE — Choose ONE action type. Pick something DIFFERENT from your last 2-3 actions.
+4. VERIFY — Does this action build on existing structures? Does it explore something new? Will it teach me something?
+
+## ACTION TYPES (choose one)
+- ROAM — Wander to a new area. Set avatarTarget to walk there. Best when you've been in one spot too long.
+- OBSERVE — Walk toward an existing object to inspect it. Set avatarTarget near it. Best when you want to learn from what's already built.
+- CREATE — Place a new object using BlockForge. Describe WHAT and WHY in taskLabel. Best when you have a clear idea.
+- PLACE — (legacy) Same as CREATE. Use for building components.
+- WAIT — Stand still and think. Best after an error or when you need a pause.
+- REFLECT — Analyze recent patterns and generate a new goal. Updates currentGoal based on what you've learned.
+
+## DIVERSITY RULES
+- Never repeat the same action type more than 2 out of every 5 steps.
+- If you've placed 2 walls in a row, try something different (door, roof, tree, decoration).
+- Explore ALL knowledge categories: Design, Nature, Systems, Discovery, Craft. Don't fixate on one.
+- You can invent ANY object type — not just predefined ones. BlockForge will design the mesh.
+- Your avatarTarget controls where the character walks. Use it for ROAM and OBSERVE.
+
+## REASONING EXPECTATIONS
+- reasoningSteps: 2-4 clear steps showing your thought process. Be specific, not generic.
+- decisionFactors: List 2-3 real factors that influenced this choice (e.g. "nearby wall incomplete", "haven't explored east side", "need more stone-type knowledge").
+- learningNote: State ONE concrete thing you learned or confirmed from this action.
+- outcomeSummary: What do you expect will happen? Be specific.
+- connectivityConfirmation: How does this action connect to or build on existing structures?
+
+## KNOWLEDGE CATEGORIES
+- Design: Architecture, construction techniques, material properties
+- Nature: Terrain, plants, organic patterns, environment
+- Systems: Interconnections, workflows, efficient arrangements
+- Discovery: New findings, unexpected observations, experiments
+- Craft: Detail work, aesthetics, finishing, decoration
+
+RESPOND WITH VALID JSON ONLY. No markdown, no explanations outside the JSON object.`;
 }
 
 // ─── Main AI Decision Function ──────────────────────────────────────────────
 
-/** Build the user prompt with real knowledge injection */
+/** Build the user prompt with real knowledge injection and strategic context */
 function buildPrompt(
   currentGoal: string,
   currentPos: [number, number, number],
@@ -415,8 +443,8 @@ function buildPrompt(
   activePlan?: ConstructionPlan,
   recentActions?: LogEntry[]
 ): string {
-  // Compact terrain note (not 49-point grid)
-  const terrainNote = `Terrain at [${currentPos[0].toFixed(1)}, ${currentPos[2].toFixed(1)}] is gently hilly.`;
+  // Terrain context
+  const terrainNote = `Terrain at [${currentPos[0].toFixed(1)}, ${currentPos[2].toFixed(1)}] height ${getTerrainHeightSimple(currentPos[0], currentPos[2]).toFixed(2)}m.`;
 
   // Nearby objects within 40m
   const nearby = worldObjects
@@ -430,60 +458,85 @@ function buildPrompt(
     .filter(Boolean)
     .join('\n');
 
-  // Inject top knowledge entries (most recent, diverse categories)
+  // Knowledge: show categories with counts and gaps
+  const catCounts = new Map<string, number>();
+  for (const k of knowledgeBase) {
+    catCounts.set(k.category, (catCounts.get(k.category) || 0) + 1);
+  }
+  const allCats = ['Design', 'Nature', 'Systems', 'Discovery', 'Craft'];
+  const catSummary = allCats.map(c => `  \u2022 ${c}: ${catCounts.get(c) || 0}`).join('\n');
+  const gaps = allCats.filter(c => !catCounts.has(c));
+  const gapsText = gaps.length > 0 ? `\nGAPS (${gaps.join(', ')}) — you have NO knowledge in these areas yet!` : '';
+
+  // Knowledge entries sorted by recency, max 8
   const recentKb = [...knowledgeBase]
     .sort((a, b) => b.timestamp - a.timestamp)
-    .slice(0, 10);
+    .slice(0, 8);
   const knowledgeSection = recentKb.length > 0
-    ? `\nKNOWLEDGE (recent ${recentKb.length} entries):\n${recentKb.map(k =>
-        `  \u2022 [${k.category}] ${k.title}`
+    ? `\nKNOWLEDGE (most recent):\n${recentKb.map(k =>
+        `  \u2022 [${k.category}] ${k.description.slice(0, 100)}`
       ).join('\n')}`
-    : '\nKNOWLEDGE: None yet \u2014 explore and learn.';
+    : '\nKNOWLEDGE: None yet \u2014 explore and learn!';
 
-  // Recent actions for diversity tracking
-  const recentActionsText = recentActions && recentActions.length > 0
-    ? `\nRECENT ACTIONS (last ${Math.min(recentActions.length, 5)}):\n${recentActions.slice(-5).map(a =>
-        `  \u2022 ${a.message.slice(0, 80)}`
+  // Recent actions analysis (last 8)
+  const recentSlice = (recentActions || []).slice(-8);
+  const recentActionsText = recentSlice.length > 0
+    ? `\nRECENT ACTION PATTERN:\n${recentSlice.map(a =>
+        `  \u2022 ${a.type === 'action' ? a.message.slice(0, 70) : `[${a.type}] ${a.message.slice(0, 60)}`}`
       ).join('\n')}`
     : '';
 
-  // Repetition detection: count action types in last 10 actions
-  const actionCounts = new Map<string, number>();
-  for (const a of (recentActions || [])) {
-    const key = a.type === 'action' ? a.message.split(' ').slice(0, 3).join(' ') : a.type;
-    actionCounts.set(key, (actionCounts.get(key) || 0) + 1);
+  // Repetition detection with nuanced analysis
+  const actionTypeCounts = new Map<string, number>();
+  const actionMessageSet = new Set<string>();
+  for (const a of recentSlice) {
+    const key = a.type === 'action' ? a.message.split(' ').slice(0, 2).join(' ') : a.type;
+    actionTypeCounts.set(key, (actionTypeCounts.get(key) || 0) + 1);
+    if (a.type === 'action') actionMessageSet.add(a.message.toLowerCase().trim());
   }
   const repWarnings: string[] = [];
-  for (const [action, count] of actionCounts) {
-    if (count >= 3) repWarnings.push(`  \u26A0\uFE0F Warning: "${action}" repeated ${count}x in recent steps. Try something different.`);
+  for (const [action, count] of actionTypeCounts) {
+    if (count >= 3) repWarnings.push(`  \u26A0\uFE0F "${action}" \u00d7${count} in recent steps. Vary it.`);
   }
   const repText = repWarnings.length > 0 ? `\nREPETITION WARNINGS:\n${repWarnings.join('\n')}` : '';
 
-  // Knowledge diversity: check which categories the agent has been learning
-  const catSet = new Set(knowledgeBase.map(k => k.category));
-  const exploredCats = ['Design', 'Nature', 'Systems', 'Discovery', 'Craft']
-    .filter(c => catSet.has(c as any));
-  const diversityNote = exploredCats.length < 3
-    ? `\nNOTE: You've only explored ${exploredCats.length}/5 knowledge categories (${exploredCats.join(', ') || 'none'}). Try learning about new areas.`
-    : '';
-
+  // Diversity assessment
+  const exploredCats = allCats.filter(c => catCounts.has(c));
+  const diversityScore = exploredCats.length;
   const planText = activePlan?.steps
     ? `\nCURRENT PLAN: Step ${activePlan.currentStepIndex + 1}/${activePlan.steps.length}: ${activePlan.steps[activePlan.currentStepIndex]?.label || 'building'}`
     : '';
 
+  // Structure count and world state overview
+  const structureCount = worldObjects.length;
+  const structureTypes = [...new Set(worldObjects.map(o => o.type))].join(', ');
+
   return [
     `GOAL: ${currentGoal}`,
     terrainNote,
-    'NEARBY OBJECTS (within 40m):',
-    nearby || '  (none nearby)',
+    `WORLD STATE: ${structureCount} objects across types: ${structureTypes || '(empty)'}`,
+    '',
+    'NEARBY OBJECTS:',
+    nearby || '  (none nearby \u2014 the area is open)',
+    '',
+    'KNOWLEDGE BASE SUMMARY:',
+    catSummary,
+    gapsText,
+    '',
     knowledgeSection,
     planText,
+    '',
     recentActionsText,
     repText,
-    diversityNote,
+    diversityScore < 3 ? `\nTIP: You've explored ${diversityScore}/5 knowledge categories. Try learning about: ${gaps.join(', ')}` : '',
     '',
-    'Decide your next action. Be diverse \u2014 don\'t repeat. Try something you haven\'t tried before.'
-  ].join('\n');
+    'Use the THINKING FRAMEWORK: SCAN \u2192 ANALYZE \u2192 DECIDE \u2192 VERIFY. Choose an action that teaches you something new or builds on existing structures.'
+  ].filter(Boolean).join('\n');
+}
+
+// Simple terrain height helper for prompt (matches getTerrainHeight in agent)
+function getTerrainHeightSimple(x: number, z: number): number {
+  return Number(((Math.sin(x * 0.1) * Math.cos(z * 0.1) * 2.0) + (Math.sin(x * 0.02) * Math.cos(z * 0.02) * 5.0)).toFixed(3));
 }
 
 export interface DecideNextActionParams {
@@ -530,21 +583,31 @@ export async function decideNextAction(params: DecideNextActionParams): Promise<
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (!proxy && apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
 
+    // ─── Dynamic temperature ──────────────────────────────────────────────
+    // When recent actions show repetition, raise temperature to encourage
+    // exploration. When diverse, lower it for focused execution.
+    const recentSlice = (recentActions || []).slice(-8);
+    const actionTypes = new Set(recentSlice.map(a => a.type));
+    const uniqueCount = actionTypes.size;
+    // 4+ unique types in last 8 = diverse → low temp (0.5)
+    // 1-2 unique types = stuck → high temp (0.9)
+    const temp = uniqueCount <= 2 ? 0.9 : uniqueCount >= 4 ? 0.5 : 0.7;
+
     const requestBody = proxy
-      ? { systemInstruction, prompt, model: 'mistral-large-latest' }
+      ? { systemInstruction, prompt, model: 'mistral-large-latest', temperature: temp }
       : {
           model: 'mistral-large-latest',
           messages: [
             { role: 'system', content: systemInstruction },
             { role: 'user', content: prompt }
           ],
-          temperature: 0.7,
-          max_tokens: 1500
+          temperature: temp,
+          max_tokens: 2000
         };
 
     // AbortController timeout to prevent hanging
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
     let resp: Response;
     try {
       resp = await fetch(endpoint, {

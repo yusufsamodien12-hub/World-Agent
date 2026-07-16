@@ -441,6 +441,22 @@ this.updateTask('Processing response...', 40);
       } else if (decision.action === 'MOVE' && decision.position) {
         this.state.avatarTarget = decision.position;
         this.addLog(`Relocating: ${decision.reason}`, 'action');
+      } else if (decision.action === 'REFLECT') {
+        // Reflect: analyze recent patterns and potentially update the goal
+        this.addLog(`Reflecting: ${decision.reason}`, 'thinking');
+        if (decision.learningNote && decision.learningNote.length > 10) {
+          const newGoal = decision.learningNote.split('.')[0]?.trim();
+          if (newGoal && newGoal.length > 5) {
+            this.state.currentGoal = newGoal;
+            this.addLog(`New goal derived: ${newGoal}`, 'success');
+          }
+        }
+        // Log reasoning steps for the reflection
+        if (decision.reasoningSteps?.length) {
+          for (const step of decision.reasoningSteps) {
+            this.addLog(`  \u2022 ${step}`, 'learning');
+          }
+        }
       } else {
         this.addLog(`Simulation standby: ${decision.reason}`, 'action');
       }
