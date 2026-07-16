@@ -28,7 +28,7 @@ const API_TIMEOUT_MS = 15000; // 15-second max wait for Mistral
 async function fetchCustomMeshFromBlockforge(
   description: string,
   source: string = 'world-agent',
-  options?: { size?: string; color?: string; material?: string; features?: string }
+  options?: { size?: string; color?: string; material?: string; features?: string; location?: { lat: number; lon: number } }
 ): Promise<CustomMeshSpec | undefined> {
   try {
     const body: any = { description, source };
@@ -36,6 +36,7 @@ async function fetchCustomMeshFromBlockforge(
     if (options?.color) body.color = options.color;
     if (options?.material) body.material = options.material;
     if (options?.features) body.features = options.features;
+    if (options?.location) body.location = options.location;
     const resp = await fetch(BLOCKFORGE_DESIGN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -693,12 +694,13 @@ export async function decideNextAction(params: DecideNextActionParams): Promise<
     if (parsed.action === 'CREATE' || parsed.action === 'PLACE') {
       const meshDesc = parsed.taskLabel || parsed.objectType || 'object';
       const bfUrl = blockforgeUrl || BLOCKFORGE_DESIGN_URL;
-      sanitizedCustomMesh = await fetchCustomMeshFromBlockforge(meshDesc)
+      const locOpts = realWorldLocation ? { location: realWorldLocation } : undefined;
+      sanitizedCustomMesh = await fetchCustomMeshFromBlockforge(meshDesc, 'world-agent', locOpts)
         ?? buildFallbackCustomMesh(parsed.objectType as WorldObjectType);
 
       if (parsed.plan?.steps && Array.isArray(parsed.plan.steps)) {
         parsed.plan.steps = await Promise.all(parsed.plan.steps.map(async (step: any) => {
-          const stepMesh = await fetchCustomMeshFromBlockforge(step?.label || step?.type)
+          const stepMesh = await fetchCustomMeshFromBlockforge(step?.label || step?.type, 'world-agent', locOpts)
             ?? buildFallbackCustomMesh(step?.type as WorldObjectType);
           return { ...step, customMesh: stepMesh };
         }));
