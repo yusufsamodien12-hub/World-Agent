@@ -20,9 +20,7 @@ import * as JSON5 from 'json5';
 // /design endpoint. This is the agent's only tool; the prompt tells the
 // AI to describe what it wants and BlockForge handles the 3D design.
 
-const BLOCKFORGE_DESIGN_URL = 
-  (typeof process !== 'undefined' && (process as any)?.env?.VITE_BLOCKFORGE_DESIGN_URL as string | undefined)
-  ?? 'https://blockforge.yusufsamodien12.workers.dev/design';
+const BLOCKFORGE_DESIGN_URL = 'https://blockforge.yusufsamodien12.workers.dev/design';
 
 const API_TIMEOUT_MS = 15000; // 15-second max wait for Mistral
 
