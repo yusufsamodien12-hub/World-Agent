@@ -17,6 +17,7 @@ export { ArchitectAgent } from './agent';
 export { decideNextAction } from './aiLogic';
 export { createMemoryProvider, LocalStorageMemory, ApiMemory } from './memory';
 export { AgentLogger } from './logger';
+export { queryBuildingKnowledge, getArchitectureKnowledgeForPrompt } from './overpass';
 
 // ─── Backward-compat wrappers for App.tsx ───────────────────────────────
 // These match the deprecated services/ API so App.tsx can switch its

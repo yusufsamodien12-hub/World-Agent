@@ -11,6 +11,7 @@ import {
   ConstructionPlan, WorldObjectType, CustomMeshSpec, MeshGeometryKind,
   GroundingLink, KnowledgeCategory, PlanStep, CategoryMastery
 } from './types';
+import { getArchitectureKnowledgeForPrompt } from './overpass';
 import * as JSON5 from 'json5';
 
 // ─── BlockForge Tool (MCP-style) ─────────────────────────────────────────
@@ -441,7 +442,8 @@ function buildPrompt(
   worldObjects: WorldObject[],
   knowledgeBase: KnowledgeEntry[],
   activePlan?: ConstructionPlan,
-  recentActions?: LogEntry[]
+  recentActions?: LogEntry[],
+  architectureKnowledge?: string
 ): string {
   // Terrain context
   const terrainNote = `Terrain at [${currentPos[0].toFixed(1)}, ${currentPos[2].toFixed(1)}] height ${getTerrainHeightSimple(currentPos[0], currentPos[2]).toFixed(2)}m.`;
@@ -529,6 +531,7 @@ function buildPrompt(
     recentActionsText,
     repText,
     diversityScore < 3 ? `\nTIP: You've explored ${diversityScore}/5 knowledge categories. Try learning about: ${gaps.join(', ')}` : '',
+    architectureKnowledge ? `\n${architectureKnowledge}` : '',
     '',
     'Use the THINKING FRAMEWORK: SCAN \u2192 ANALYZE \u2192 DECIDE \u2192 VERIFY. Choose an action that teaches you something new or builds on existing structures.'
   ].filter(Boolean).join('\n');
@@ -550,17 +553,35 @@ export interface DecideNextActionParams {
   mistralApiKey?: string;
   blockforgeUrl?: string;
   recentActions?: LogEntry[];
+  /** Optional real-world geo coordinates for Overpass architectural knowledge */
+  realWorldLocation?: { lat: number; lon: number; radius?: number };
 }
 
 export async function decideNextAction(params: DecideNextActionParams): Promise<AIActionResponse> {
-  const { worldObjects, currentGoal, knowledgeBase, activePlan, proxyUrl, mistralApiKey, blockforgeUrl, recentActions } = params;
+  const { worldObjects, currentGoal, knowledgeBase, activePlan, proxyUrl, mistralApiKey, blockforgeUrl, recentActions, realWorldLocation } = params;
 
   const currentPos = worldObjects.length > 0
     ? worldObjects[worldObjects.length - 1].position
     : [0, 0, 0] as [number, number, number];
 
   const systemInstruction = buildSystemInstruction();
-  const prompt = buildPrompt(currentGoal, currentPos, worldObjects, knowledgeBase, activePlan, recentActions);
+
+  // Fetch real-world architectural knowledge from OpenStreetMap
+  // if coordinates are provided (with caching: only every 10 iterations)
+  let architectureKnowledge: string | undefined;
+  if (realWorldLocation) {
+    try {
+      architectureKnowledge = await getArchitectureKnowledgeForPrompt(
+        realWorldLocation.lat,
+        realWorldLocation.lon,
+        realWorldLocation.radius || 500,
+      );
+    } catch {
+      // Non-fatal — proceed without real-world data
+    }
+  }
+
+  const prompt = buildPrompt(currentGoal, currentPos, worldObjects, knowledgeBase, activePlan, recentActions, architectureKnowledge);
 
   const apiKey = (mistralApiKey ?? '').toString().trim();
   const proxy = proxyUrl;
