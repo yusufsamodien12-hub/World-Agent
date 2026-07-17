@@ -7,6 +7,8 @@ import { WorldObject, LogEntry, SimulationState, KnowledgeEntry, GroundingLink, 
 import { decideNextActionLegacy as decideNextAction, AIActionResponse, loadSimulationState, saveSimulationState, logger, generateId } from '../agent';
 
 const INITIAL_GOAL = "Synthesize Sustainable Modular Settlement";
+const MAX_RENDERS = 50;
+let renderCount = 0;
 
 const getTerrainHeight = (x: number, z: number) => {
   const height = (Math.sin(x * 0.1) * Math.cos(z * 0.1) * 2.0) +
@@ -185,6 +187,15 @@ const buildFallbackHousePlan = (anchor: [number, number, number], objective: str
 type ViewType = 'nexus' | 'knowledge' | 'logs' | 'planning';
 
 function App() {
+  // Render count guard — prevent infinite loops from flooding console
+  renderCount++;
+  if (renderCount > MAX_RENDERS) {
+    console.warn(`⚠️ Render count exceeded ${MAX_RENDERS} — possible infinite loop.`);
+    if (renderCount > MAX_RENDERS + 3) {
+      throw new Error(`Infinite render loop detected (${renderCount} renders). Check state updates.`);
+    }
+  }
+
   logger.info('App', '🚀 App component initializing');
   logger.info('App', 'Environment', { 
     isDev: import.meta.env.DEV, 
